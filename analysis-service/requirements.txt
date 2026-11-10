@@ -1,0 +1,22 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+numpy==2.2.1
+pandas==2.2.3
+scipy==1.14.1
+openpyxl==3.1.5
+# geojsoncontour 0.4.0 (unmaintained since ~2020) reads
+# `QuadContourSet.collections`, an attribute matplotlib deprecated in 3.8
+# and removed outright in 3.10 - any matplotlib pulled in without this pin
+# resolves to a version new enough to crash field_to_geojson() with
+# `AttributeError: 'QuadContourSet' object has no attribute 'collections'`
+# on every single contour conversion. 3.7.5 is the last 3.7.x release and
+# still has the attribute.
+matplotlib==3.7.5
+geojsoncontour==0.4.0
+pyproj==3.7.0
+contourpy==1.3.1
+pydantic==2.10.4
+python-multipart==0.0.20
+scikit-learn==1.6.0
+statsmodels==0.14.4
+tensorflow==2.18.0

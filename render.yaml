@@ -1,0 +1,30 @@
+# Render Blueprint - free web service running the API *and* the BullMQ
+# workers in one process (Render has no free background worker).
+services:
+  - type: web
+    name: olkaria-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: node dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RUN_WORKERS_IN_PROCESS
+        value: "true"
+      - key: UPLOAD_DIR
+        value: /tmp/uploads
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: ANALYSIS_SERVICE_URL
+        sync: false
+      - key: ANALYSIS_SERVICE_TOKEN
+        sync: false

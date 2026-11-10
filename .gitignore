@@ -1,0 +1,27 @@
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# JavaScript dependencies and build output
+**/node_modules/
+**/dist/
+**/coverage/
+*.tsbuildinfo
+
+# Python environments, bytecode, and test caches
+**/.venv/
+**/.venv*/
+**/venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Runtime data and logs
+**/uploads/*
+*.log
+
+# Local operating-system files
+.DS_Store
+Thumbs.db
