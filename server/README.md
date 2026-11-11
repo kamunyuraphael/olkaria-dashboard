@@ -14,10 +14,9 @@ queue (BullMQ + Redis) with Mongo as the durable status/result store:
 - `npm run worker` — the job processor (`src/worker.ts`): picks jobs off
   the queue, calls the analysis-service, writes the result back.
 
-Run both side by side in development. In production, separate processes
-avoid coupling a long AERMOD run to the API process. The repository's
-`render.yaml` is an exception for low-cost hosting: it sets
-`RUN_WORKERS_IN_PROCESS=true` to run the workers alongside the API.
+Run both side by side in development. Deploy as two separate
+processes/services in production — a stuck 10-minute AERMOD run shouldn't
+share a process (or a restart) with the API that's answering polls.
 
 ## Setup
 
