@@ -105,7 +105,7 @@ export function Co2AnnView() {
                 {status === "queued" ? "Queued…" : "Running ANN forecast…"}
               </h3>
               <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)]">
-                {elapsed} elapsed — typically takes about 3 minutes. You can leave this page;
+                {elapsed} elapsed, typically takes about 3 minutes. You can leave this page;
                 it'll pick back up when you return.
               </p>
             </div>

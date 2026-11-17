@@ -81,7 +81,7 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
         actions={
           !isRunning && (
             <button onClick={backToUpload} className={outlineBtn}>
-              ← New upload
+              New upload
             </button>
           )
         }
@@ -95,7 +95,7 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
               {status === "queued" ? "Queued…" : "Running dispersion model…"}
             </h3>
             <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed max-w-md mx-auto">
-              {elapsed} elapsed — this usually takes 8–10 minutes. You can leave this page; the run continues and is
+              {elapsed} elapsed, this usually takes 8–10 minutes. You can leave this page; the run continues and is
               saved in Results when it finishes.
             </p>
             <button onClick={() => onOpenResults("active")} className={`${outlineBtn} mt-5`}>
@@ -125,7 +125,7 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
         {status === "complete" && result && (
           <>
             <p className="text-xs text-[var(--color-text-quaternary)]">
-              Saved to <button onClick={() => onOpenResults("complete")} className="text-[var(--color-primary)] hover:underline cursor-pointer">Results</button> — you can reopen it any time.
+              Saved to <button onClick={() => onOpenResults("complete")} className="text-[var(--color-primary)] hover:underline cursor-pointer">Results</button>, you can reopen it any time.
             </p>
             <DispersionResults result={result} />
           </>
