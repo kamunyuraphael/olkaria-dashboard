@@ -1,6 +1,6 @@
 /**
  * Shared accepted-format constant for every data-file upload slot (CO2 ANN,
- * AERMOD dispersion). Centralized so "what formats do we accept" is one
+ * gas dispersion). Centralized so "what formats do we accept" is one
  * decision, not a per-FileSlot copy/paste that drifts.
  *
  * Supports CSV, TSV, and both Excel formats (.xlsx, .xls) — the full set

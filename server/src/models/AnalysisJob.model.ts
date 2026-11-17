@@ -49,6 +49,15 @@ const analysisJobSchema = new Schema(
       _id: false,
     },
 
+    // co2-ann jobs only. "satellite" = coordinates above; "upload" = one
+    // combined data file in inputFiles (role "data"). Jobs created before
+    // uploads existed have no value stored, so they read back as satellite.
+    dataSource: { type: String, enum: ["satellite", "upload"], default: "satellite" },
+    // Gas for upload jobs (satellite jobs keep theirs inside `coordinates`).
+    gas: { type: String, enum: ["SO2", "CH4", "CO2"] },
+    // Free-text site/dataset label the user typed, shown on the results.
+    siteLabel: { type: String },
+
     queuedAt: { type: Date, default: () => new Date() },
     startedAt: { type: Date }, // set by the worker when it actually begins processing
     completedAt: { type: Date },

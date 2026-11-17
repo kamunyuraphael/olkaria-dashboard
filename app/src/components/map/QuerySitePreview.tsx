@@ -40,12 +40,8 @@ export function QuerySitePreview({
         </span>
       </div>
 
-      <div className="absolute bottom-3 left-3 z-[400] pointer-events-none px-2.5 py-1.5 rounded-lg bg-[var(--color-surface)]/90 backdrop-blur border border-[var(--color-border)] text-[10px] font-semibold tracking-wider text-[var(--color-text-quaternary)] uppercase shadow-sm">
-        Olkaria Geothermal Field · Kenya
-      </div>
-
-      <div className="absolute bottom-3 right-3 z-[400] pointer-events-none px-2.5 py-1.5 rounded-lg bg-[var(--color-surface)]/90 backdrop-blur border border-[var(--color-border)] text-[11px] text-[var(--color-text-tertiary)] shadow-sm">
-        Click or drag the pin to adjust
+      <div className="absolute bottom-3 left-3 z-[400] pointer-events-none px-2.5 py-1.5 rounded-lg bg-[var(--color-surface)]/90 backdrop-blur border border-[var(--color-border)] text-[11px] text-[var(--color-text-tertiary)] shadow-sm">
+        Tap the map or drag the pin to adjust
       </div>
     </div>
   );

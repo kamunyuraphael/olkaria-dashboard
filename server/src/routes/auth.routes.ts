@@ -1,10 +1,14 @@
 import { Router } from "express";
+import { rateLimit } from "@/middleware/rateLimit.middleware.js";
 import { requireAuth, requireAdmin } from "@/middleware/auth.middleware.js";
 import {
   login,
   requestAccess,
   logout,
   me,
+  updateMyLocation,
+  changePassword,
+  deleteMyAccount,
   listAccessRequests,
   approveAccessRequest,
   rejectAccessRequest,
@@ -12,10 +16,19 @@ import {
 
 export const authRouter = Router();
 
-authRouter.post("/login", login);
+// 10 attempts / 15 min per IP + email.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  max: 10,
+  key: (req) => `${req.ip}:${String(req.body?.email ?? "").toLowerCase()}`,
+});
+authRouter.post("/login", loginLimiter, login);
 authRouter.post("/request-access", requestAccess);
 authRouter.post("/logout", logout);
 authRouter.get("/me", requireAuth, me);
+authRouter.patch("/me/location", requireAuth, updateMyLocation);
+authRouter.post("/change-password", requireAuth, changePassword);
+authRouter.delete("/me", requireAuth, deleteMyAccount);
 
 // Admin-only access-request review. No self-service signup — accounts are
 // only created by an admin approving a pending request (see

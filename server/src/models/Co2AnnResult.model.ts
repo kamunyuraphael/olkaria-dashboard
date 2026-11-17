@@ -15,6 +15,10 @@ const co2AnnResultSchema = new Schema(
       ann: { type: [Schema.Types.Mixed], required: true },
       sarima: { type: [Number], required: true },
     },
+    // How the data was obtained/prepared: source, gas, label, detected time
+    // step, resampling/gap-fill counts. Free-form on purpose - the
+    // analysis-service owns this shape and it can grow without a migration.
+    meta: { type: Schema.Types.Mixed },
     correlations: [
       {
         feature: { type: String, required: true },

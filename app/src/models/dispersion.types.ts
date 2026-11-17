@@ -1,4 +1,4 @@
-// AERMOD dispersion module (upload-based) — see olkaria-ann-dashboard notes.
+// Gas dispersion module (upload-based).
 
 export type DispersionGas = "CO2" | "CH4" | "H2S";
 

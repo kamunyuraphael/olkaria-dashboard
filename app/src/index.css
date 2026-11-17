@@ -126,3 +126,11 @@ body {
 *:hover::-webkit-scrollbar-thumb {
   background: var(--color-scrollbar);
 }
+
+
+/* Printing a result (Print / save PDF): drop the app chrome and let the page flow. */
+@media print {
+  .no-print, header, nav, button { display: none !important; }
+  html, body, #root, .print-reset { height: auto !important; overflow: visible !important; }
+  .print-reset { display: block !important; }
+}

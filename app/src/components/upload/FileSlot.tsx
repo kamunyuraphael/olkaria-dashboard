@@ -24,8 +24,8 @@ function hasAllowedExtension(fileName: string, accept: string): boolean {
 
 /**
  * One labeled upload slot (e.g. "Met Data", "CO2 Emission Sources").
- * Both upload modules (CO2 ANN, AERMOD dispersion) are built from these —
- * CO2 ANN uses two slots, AERMOD uses four (met + one per gas).
+ * Both upload modules (ANN, gas dispersion) are built from these —
+ * ANN uses one, dispersion uses two (met + one gas).
  *
  * `accept` drives the native file-picker filter AND is enforced here on
  * both click-to-browse and drag-and-drop, since the HTML `accept`

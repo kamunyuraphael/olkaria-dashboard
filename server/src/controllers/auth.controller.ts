@@ -4,12 +4,26 @@ import bcrypt from "bcryptjs";
 import { User } from "@/models/User.model.js";
 import { AccessRequest } from "@/models/AccessRequest.model.js";
 import { signToken } from "@/services/token.service.js";
+import { deleteUserAndData } from "@/services/userCleanup.service.js";
 import type { AuthedRequest } from "@/middleware/auth.middleware.js";
 
 const BCRYPT_ROUNDS = 12;
 
-function userJson(user: { _id: unknown; name: string; email: string; institution: string; role: string }) {
+function userJson(user: {
+  _id: unknown;
+  name: string;
+  email: string;
+  institution: string;
+  role: string;
+  mustChangePassword?: boolean | null;
+  defaultLocation?: { label?: string | null; latitude: number; longitude: number } | null;
+}) {
+  const loc = user.defaultLocation;
   return {
+    mustChangePassword: user.mustChangePassword === true,
+    defaultLocation: loc
+      ? { label: loc.label ?? undefined, latitude: loc.latitude, longitude: loc.longitude }
+      : null,
     id: String(user._id),
     name: user.name,
     email: user.email,
@@ -34,6 +48,11 @@ export async function login(req: Request, res: Response) {
   if (!matches) {
     return res.status(401).json({ error: "Invalid email or password." });
   }
+  if (user.disabled) {
+    return res.status(403).json({ error: "This account has been disabled. Contact an administrator." });
+  }
+  user.lastLoginAt = new Date();
+  await user.save();
 
   const token = signToken({ sub: String(user._id), role: user.role as "researcher" | "policy" | "admin" });
   return res.json({ token, user: userJson(user) });
@@ -73,6 +92,68 @@ export async function me(req: AuthedRequest, res: Response) {
   const user = await User.findById(req.userId);
   if (!user) return res.status(404).json({ error: "User not found." });
   return res.json({ user: userJson(user) });
+}
+
+// PATCH /api/auth/me/location  { latitude, longitude, label? }  (or { clear: true })
+export async function updateMyLocation(req: AuthedRequest, res: Response) {
+  const { latitude, longitude, label, clear } = req.body ?? {};
+  const user = await User.findById(req.userId);
+  if (!user) return res.status(404).json({ error: "User not found." });
+
+  if (clear === true) {
+    user.set("defaultLocation", undefined);
+  } else {
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return res.status(400).json({ error: "latitude (-90..90) and longitude (-180..180) are required." });
+    }
+    user.set("defaultLocation", {
+      latitude: lat,
+      longitude: lng,
+      label: typeof label === "string" && label.trim() ? label.trim().slice(0, 80) : undefined,
+    });
+  }
+  await user.save();
+  return res.json({ user: userJson(user) });
+}
+
+// POST /api/auth/change-password  { currentPassword, newPassword }
+export async function changePassword(req: AuthedRequest, res: Response) {
+  const { currentPassword, newPassword } = req.body ?? {};
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+    return res.status(400).json({ error: "currentPassword and newPassword are required." });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "New password must be at least 8 characters." });
+  }
+  if (newPassword === currentPassword) {
+    return res.status(400).json({ error: "New password must be different from the current one." });
+  }
+  const user = await User.findById(req.userId);
+  if (!user) return res.status(404).json({ error: "User not found." });
+  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    return res.status(401).json({ error: "Current password is incorrect." });
+  }
+  user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  user.mustChangePassword = false;
+  await user.save();
+  return res.json({ user: userJson(user) });
+}
+
+// DELETE /api/auth/me  { password } — removes the account and all of its runs.
+export async function deleteMyAccount(req: AuthedRequest, res: Response) {
+  const { password } = req.body ?? {};
+  const user = await User.findById(req.userId);
+  if (!user) return res.status(404).json({ error: "User not found." });
+  if (typeof password !== "string" || !(await bcrypt.compare(password, user.passwordHash))) {
+    return res.status(401).json({ error: "Password is incorrect." });
+  }
+  if (user.role === "admin" && (await User.countDocuments({ role: "admin", disabled: { $ne: true } })) <= 1) {
+    return res.status(409).json({ error: "You are the only admin. Make someone else an admin first." });
+  }
+  await deleteUserAndData(user._id.toString());
+  return res.status(204).end();
 }
 
 // POST /api/auth/logout
@@ -130,6 +211,7 @@ export async function approveAccessRequest(req: AuthedRequest, res: Response) {
     institution: accessRequest.institution,
     role: accessRequest.role,
     passwordHash,
+    mustChangePassword: true,
   });
 
   accessRequest.status = "approved";

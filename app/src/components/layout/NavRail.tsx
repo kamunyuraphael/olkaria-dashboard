@@ -1,6 +1,7 @@
 import type { Page } from "@/models/analysis.types";
 import { useAuth } from "@/controllers/useAuth";
 import { BrandMark } from "@/components/ui/BrandMark";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import { IconOverview, IconAnalysis, IconLibrary, IconDispersion, IconSettings } from "@/components/layout/NavIcons";
 
 interface NavItem {
@@ -10,22 +11,32 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
+// Order matters: Gas dispersion comes before ANN.
+export const NAV_ITEMS: NavItem[] = [
+  { id: "overview", label: "Overview", caption: "Your workspace", icon: <IconOverview /> },
+  { id: "dispersion", label: "Gas dispersion", caption: "Upload data, map the spread", icon: <IconDispersion /> },
+  { id: "analysis", label: "ANN", caption: "Satellite or your own data", icon: <IconAnalysis /> },
+  { id: "library", label: "Results", caption: "Your saved runs", icon: <IconLibrary /> },
+];
+
+export const ADMIN_ITEM: NavItem = {
+  id: "admin",
+  label: "Admin",
+  caption: "Users & requests",
+  icon: <IconSettings />,
+};
+
+export const SETTINGS_ITEM: NavItem = {
+  id: "settings",
+  label: "Settings",
+  caption: "Profile & location",
+  icon: <IconSettings />,
+};
+
 function IconCollapse({ collapsed }: { collapsed: boolean }) {
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      className={`transition-transform ${collapsed ? "rotate-180" : ""}`}
-    >
-      <path
-        d="M9 2.5L4.5 7l4.5 4.5"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={`transition-transform ${collapsed ? "rotate-180" : ""}`}>
+      <path d="M9 2.5L4.5 7l4.5 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -45,6 +56,7 @@ function NavButton({
     <button
       onClick={() => onNavigate(item.id)}
       title={collapsed ? item.label : undefined}
+      aria-current={isActive ? "page" : undefined}
       className={`relative w-full flex items-center rounded-lg text-left transition-colors cursor-pointer ${
         collapsed ? "justify-center px-0 py-2.5" : "gap-3 pl-3.5 pr-3 py-2.5"
       } ${
@@ -53,13 +65,7 @@ function NavButton({
           : "text-[var(--color-text-tertiary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text-secondary)]"
       }`}
     >
-      {isActive && (
-        <span
-          className={`absolute top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[var(--color-primary)] rounded-r ${
-            collapsed ? "left-0" : "left-0"
-          }`}
-        />
-      )}
+      {isActive && <span className="absolute top-1/2 -translate-y-1/2 left-0 w-[3px] h-5 bg-[var(--color-primary)] rounded-r" />}
       <span className="shrink-0">{item.icon}</span>
       {!collapsed && (
         <span className="min-w-0 flex-1">
@@ -77,6 +83,7 @@ function NavButton({
   );
 }
 
+/** Desktop / tablet side rail. Hidden on phones, where <BottomNav/> takes over. */
 export function NavRail({
   page,
   onNavigate,
@@ -89,33 +96,13 @@ export function NavRail({
   onToggleCollapsed: () => void;
 }) {
   const { user, logout } = useAuth();
-
-  const items: NavItem[] = [
-    { id: "overview", label: "Overview", caption: "Your workspace", icon: <IconOverview /> },
-    { id: "analysis", label: "Satellite ANN", caption: "SO₂ · CH₄ · CO₂", icon: <IconAnalysis /> },
-    { id: "dispersion", label: "Gas dispersion", caption: "AERMOD Gaussian plume", icon: <IconDispersion /> },
-    { id: "library", label: "Results library", caption: "Saved runs", icon: <IconLibrary /> },
-  ];
-
-  const settingsItem: NavItem = {
-    id: "settings",
-    label: "Settings",
-    caption: "Profile & defaults",
-    icon: <IconSettings />,
-  };
-
   const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((p) => p[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
+    ? user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
     : "";
 
   return (
     <nav
-      className={`shrink-0 bg-[var(--color-surface)] border-r border-[var(--color-border)] flex flex-col py-5 overflow-hidden transition-[width] duration-200 ${
+      className={`hidden md:flex shrink-0 bg-[var(--color-surface)] border-r border-[var(--color-border)] flex-col py-5 overflow-hidden transition-[width] duration-200 ${
         collapsed ? "w-[68px]" : "w-[220px]"
       }`}
     >
@@ -124,9 +111,9 @@ export function NavRail({
           <div className="flex items-center gap-2 min-w-0">
             <BrandMark size={22} />
             <div className="min-w-0 leading-tight">
-              <p className="text-[12.5px] font-semibold text-[var(--color-text-primary)] truncate">Olkaria</p>
+              <p className="text-[12.5px] font-semibold text-[var(--color-text-primary)] truncate">{BRAND_NAME}</p>
               <p className="text-[9px] font-semibold tracking-wider text-[var(--color-text-quaternary)] uppercase truncate">
-                Gas observatory
+                {BRAND_TAGLINE}
               </p>
             </div>
           </div>
@@ -141,67 +128,40 @@ export function NavRail({
         </button>
       </div>
 
-      {!collapsed && (
-        <div className="px-4 mb-3">
-          <p className="text-[10.5px] font-semibold tracking-wider text-[var(--color-text-quaternary)] uppercase">
-            Workspace
-          </p>
-        </div>
-      )}
-
       <div className="flex flex-col gap-1 px-3 flex-1">
-        {items.map((item) => (
-          <NavButton
-            key={item.id}
-            item={item}
-            isActive={item.id === page}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
+        {NAV_ITEMS.map((item) => (
+          <NavButton key={item.id} item={item} isActive={item.id === page} collapsed={collapsed} onNavigate={onNavigate} />
         ))}
       </div>
 
-      <div className="px-3 mt-2">
-        <NavButton item={settingsItem} isActive={page === "settings"} collapsed={collapsed} onNavigate={onNavigate} />
+      <div className="px-3 mt-2 flex flex-col gap-1">
+        {user?.role === "admin" && (
+          <NavButton item={ADMIN_ITEM} isActive={page === "admin"} collapsed={collapsed} onNavigate={onNavigate} />
+        )}
+        <NavButton item={SETTINGS_ITEM} isActive={page === "settings"} collapsed={collapsed} onNavigate={onNavigate} />
       </div>
 
       <div className={`mt-4 pt-4 border-t border-[var(--color-border)] ${collapsed ? "px-2" : "px-3"}`}>
-        <div
-          className={`flex items-center mb-3 ${collapsed ? "justify-center" : "gap-2.5 px-1"}`}
-          title={collapsed ? "Olkaria field · Kenya · 0.90° S, 36.29° E" : undefined}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] shrink-0" />
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-medium text-[var(--color-text-secondary)] leading-tight truncate">
-                Olkaria field
-              </p>
-              <p className="text-[10.5px] text-[var(--color-text-quaternary)] leading-tight truncate mt-0.5">
-                Kenya · 0.90&#176; S, 36.29&#176; E
-              </p>
-            </div>
-          )}
-        </div>
-
         {user && (
-          <div
-            className={`flex items-center mb-2 ${collapsed ? "justify-center" : "gap-2.5 px-1"}`}
+          <button
+            onClick={() => onNavigate("settings")}
+            className={`w-full flex items-center mb-2 cursor-pointer ${collapsed ? "justify-center" : "gap-2.5 px-1 text-left"}`}
             title={collapsed ? `${user.name} · ${user.email}` : undefined}
           >
             <span className="w-6 h-6 rounded-full bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-[10px] font-semibold flex items-center justify-center shrink-0">
               {initials}
             </span>
             {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="text-[12px] font-medium text-[var(--color-text-secondary)] leading-tight truncate">
-                  {user.name}
-                </p>
-                <p className="text-[10.5px] text-[var(--color-text-quaternary)] leading-tight truncate mt-0.5">
-                  {user.email}
-                </p>
-              </div>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12px] font-medium text-[var(--color-text-secondary)] leading-tight truncate">{user.name}</span>
+                <span className="block text-[10.5px] text-[var(--color-text-quaternary)] leading-tight truncate mt-0.5">
+                  {user.defaultLocation
+                    ? user.defaultLocation.label || `${user.defaultLocation.latitude.toFixed(2)}°, ${user.defaultLocation.longitude.toFixed(2)}°`
+                    : "No default location"}
+                </span>
+              </span>
             )}
-          </div>
+          </button>
         )}
 
         <button
@@ -212,23 +172,37 @@ export function NavRail({
           }`}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-            <path
-              d="M5.5 1.5H2.5a1 1 0 00-1 1v9a1 1 0 001 1h3M9.5 10l3-3-3-3M12.5 7h-8"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M5.5 1.5H2.5a1 1 0 00-1 1v9a1 1 0 001 1h3M9.5 10l3-3-3-3M12.5 7h-8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {!collapsed && "Sign out"}
         </button>
-
-        {!collapsed && (
-          <p className="mt-3 px-1 text-[9.5px] tracking-wider text-[var(--color-text-disabled)] uppercase">
-            Field research portal
-          </p>
-        )}
       </div>
+    </nav>
+  );
+}
+
+/** Phone navigation: a fixed bottom tab bar with large tap targets. */
+export function BottomNav({ page, onNavigate }: { page: Page; onNavigate: (p: Page) => void }) {
+  const { user } = useAuth();
+  const items = user?.role === "admin" ? [...NAV_ITEMS, ADMIN_ITEM, SETTINGS_ITEM] : [...NAV_ITEMS, SETTINGS_ITEM];
+  return (
+    <nav className="md:hidden shrink-0 bg-[var(--color-surface)] border-t border-[var(--color-border)] flex pb-[env(safe-area-inset-bottom)]">
+      {items.map((item) => {
+        const active = item.id === page;
+        return (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            aria-current={active ? "page" : undefined}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 min-h-[52px] cursor-pointer transition-colors ${
+              active ? "text-[var(--color-primary)]" : "text-[var(--color-text-tertiary)]"
+            }`}
+          >
+            {item.icon}
+            <span className="text-[10px] font-medium leading-tight">{item.id === "dispersion" ? "Dispersion" : item.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }

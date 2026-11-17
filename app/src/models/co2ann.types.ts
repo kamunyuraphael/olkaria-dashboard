@@ -1,4 +1,4 @@
-// CO2 ANN module (upload-based) — see olkaria-ann-dashboard notes.
+// ANN module result types (satellite or uploaded data).
 
 export interface Co2AnnResult {
   // "Actual vs Predicted Values Using SARIMA and ANN" — the one line chart
@@ -18,4 +18,25 @@ export interface Co2AnnResult {
     feature: string;
     r: number;
   }[];
+  // Provenance + data-prep notes from the analysis-service. Absent on
+  // results saved before uploads existed (those were all satellite runs).
+  meta?: Co2AnnMeta;
+}
+
+export interface Co2AnnMeta {
+  source?: "satellite" | "upload";
+  gas?: string;
+  /** Site/dataset label the user typed on an upload run. */
+  label?: string;
+  rows?: number;
+  startDate?: string;
+  endDate?: string;
+  /** Upload runs: "daily" | "sub-daily" (what the file's timestamps looked like). */
+  detectedStep?: string;
+  /** Upload runs: finer-than-daily data was averaged to daily. */
+  resampledToDaily?: boolean;
+  /** Upload runs: days with no gas reading that were filled by interpolation. */
+  filledDays?: number;
+  /** Server had no analysis-service configured, so this is simulated output. */
+  simulated?: boolean;
 }

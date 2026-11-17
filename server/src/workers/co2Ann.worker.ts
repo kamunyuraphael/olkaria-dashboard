@@ -1,8 +1,8 @@
-import { Worker, type Job } from "bullmq";
+import { Worker, UnrecoverableError, type Job } from "bullmq";
 import { redisConnection } from "@/config/redis.js";
 import { AnalysisJob } from "@/models/AnalysisJob.model.js";
 import { Co2AnnResult } from "@/models/Co2AnnResult.model.js";
-import { runCo2AnnAnalysis } from "@/services/analysisServiceClient.js";
+import { AnalysisValidationError, runCo2AnnAnalysis, runCo2AnnUploadAnalysis } from "@/services/analysisServiceClient.js";
 import type { AnalysisJobData } from "@/queue/analysisQueue.js";
 
 export function startCo2AnnWorker() {
@@ -16,22 +16,39 @@ export function startCo2AnnWorker() {
       analysisJob.startedAt = new Date();
       await analysisJob.save();
 
-      const coordinates = analysisJob.coordinates;
-      if (!coordinates) throw new Error("co2-ann job is missing its coordinates");
-
-      const output = await runCo2AnnAnalysis({
-        gas: coordinates.gas ?? "CO2",
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        radiusKm: coordinates.radiusKm,
-        startDate: coordinates.startDate ?? undefined,
-        endDate: coordinates.endDate ?? undefined,
-      });
+      let output;
+      if (analysisJob.dataSource === "upload") {
+        const dataFile = analysisJob.inputFiles.find((f) => f.role === "data");
+        if (!dataFile || !analysisJob.gas) throw new Error("upload job is missing its data file or gas");
+        try {
+          output = await runCo2AnnUploadAnalysis({ gas: analysisJob.gas, filePath: dataFile.storedPath });
+        } catch (err) {
+          // A bad file (missing column, monthly data, too short...) fails the
+          // same way every time - skip BullMQ's retries so the user sees the
+          // reason immediately instead of after the backoff delay.
+          if (err instanceof AnalysisValidationError) throw new UnrecoverableError(err.message);
+          throw err;
+        }
+      } else {
+        const coordinates = analysisJob.coordinates;
+        if (!coordinates) throw new Error("co2-ann job is missing its coordinates");
+        output = await runCo2AnnAnalysis({
+          gas: coordinates.gas ?? "CO2",
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          radiusKm: coordinates.radiusKm,
+          startDate: coordinates.startDate ?? undefined,
+          endDate: coordinates.endDate ?? undefined,
+        });
+      }
 
       const resultDoc = await Co2AnnResult.create({
         job: analysisJob._id,
         timeSeries: output.timeSeries,
         correlations: output.correlations,
+        // Provenance: what the analysis-service did to the data, plus the
+        // user's own label for it.
+        meta: { ...(output.meta ?? {}), ...(analysisJob.siteLabel ? { label: analysisJob.siteLabel } : {}) },
       });
 
       analysisJob.stage = "complete";

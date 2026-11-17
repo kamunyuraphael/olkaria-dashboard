@@ -1,6 +1,3 @@
-import { QuerySitePreview } from "@/components/map/QuerySitePreview";
-import type { Gas } from "@/models/analysis.types";
-
 const RUN_STAGES = ["Queued", "Fetching satellite data", "Running model"];
 
 export function ErrorIcon() {
@@ -35,32 +32,9 @@ export function RunStageTracker({ label }: { label: string }) {
   );
 }
 
-export function AnalysisEmptyState({
-  lat,
-  lng,
-  radiusKm,
-  gas,
-  onCoordsChange,
-}: {
-  lat: number;
-  lng: number;
-  radiusKm: number;
-  gas: Gas;
-  onCoordsChange: (lat: number, lng: number) => void;
-}) {
-  return (
-    <div className="flex-1 flex flex-col gap-3 min-h-0">
-      <QuerySitePreview lat={lat} lng={lng} radiusKm={radiusKm} gas={gas} onCoordsChange={onCoordsChange} />
-      <p className="shrink-0 text-center text-sm text-[var(--color-text-tertiary)]">
-        No analysis yet — set a date range on the left, then run. Results typically take a few minutes.
-      </p>
-    </div>
-  );
-}
-
 export function AnalysisRunningState({ label }: { label: string }) {
   return (
-    <div className="flex-1 flex items-center justify-center">
+    <div className="flex items-center justify-center py-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
       <div className="max-w-sm text-center px-6">
         <div className="w-12 h-12 rounded-xl bg-[var(--color-warning-subtle)] flex items-center justify-center mx-auto mb-4">
           <span className="w-4 h-4 rounded-full border-2 border-[var(--color-warning)] border-t-transparent animate-spin" />
@@ -68,29 +42,55 @@ export function AnalysisRunningState({ label }: { label: string }) {
         <RunStageTracker label={label} />
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{label}</h3>
         <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">
-          You can leave this page — the run continues in the background and will appear in your Results
-          Library when it finishes.
+          You can leave this page — the run continues in the background and will appear in Results when it finishes.
         </p>
       </div>
     </div>
   );
 }
 
-export function AnalysisFailedState({ onRetry }: { onRetry: () => void }) {
+export function AnalysisFailedState({
+  onRetry,
+  message,
+  source = "satellite",
+}: {
+  onRetry: () => void;
+  /** The reason the server gave. Shown as-is for uploads, where it says exactly what to fix. */
+  message?: string | null;
+  source?: "satellite" | "upload";
+}) {
   return (
-    <div className="flex-1 flex items-center justify-center">
+    <div className="flex items-center justify-center py-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
       <div className="max-w-sm text-center px-6">
         <ErrorIcon />
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Analysis failed</h3>
         <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">
-          The run could not be completed. This often means too few valid retrievals were available for the
-          selected domain and date range — try a wider buffer radius or a longer period.
+          {source === "upload"
+            ? message || "The file could not be used. Check it against the template and try again."
+            : "The run could not be completed. This often means too few valid retrievals were available for the selected domain and date range — try a wider buffer radius or a longer period."}
         </p>
         <button
           onClick={onRetry}
           className="mt-5 px-4 py-2 border border-[var(--color-primary)] text-[var(--color-primary)] text-sm font-medium rounded-lg hover:bg-[var(--color-primary-subtle)] transition-colors cursor-pointer"
         >
           Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function AnalysisUploadEmptyState({ requirements, onDownloadTemplate }: { requirements: string; onDownloadTemplate: () => void }) {
+  return (
+    <div className="flex items-center justify-center py-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
+      <div className="max-w-sm text-center px-6">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Run on your own data</h3>
+        <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">{requirements}</p>
+        <button
+          onClick={onDownloadTemplate}
+          className="mt-5 px-4 py-2 border border-[var(--color-primary)] text-[var(--color-primary)] text-sm font-medium rounded-lg hover:bg-[var(--color-primary-subtle)] transition-colors cursor-pointer"
+        >
+          Download CSV template
         </button>
       </div>
     </div>

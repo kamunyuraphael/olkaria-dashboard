@@ -1,12 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "@/services/token.service.js";
+import { User } from "@/models/User.model.js";
 
 export interface AuthedRequest extends Request {
   userId?: string;
   userRole?: "researcher" | "policy" | "admin";
 }
 
-export function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
+export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) {
@@ -14,8 +15,13 @@ export function requireAuth(req: AuthedRequest, res: Response, next: NextFunctio
   }
   try {
     const payload = verifyToken(token);
+    // Check the account on every call so deleting/disabling a user or changing
+    // their role takes effect immediately instead of when the JWT expires.
+    const user = await User.findById(payload.sub).select("role disabled");
+    if (!user) return res.status(401).json({ error: "Account no longer exists." });
+    if (user.disabled) return res.status(403).json({ error: "This account has been disabled." });
     req.userId = payload.sub;
-    req.userRole = payload.role;
+    req.userRole = user.role as AuthedRequest["userRole"];
     next();
   } catch {
     return res.status(401).json({ error: "Invalid or expired token." });

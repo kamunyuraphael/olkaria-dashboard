@@ -1,63 +1,51 @@
+import { useEffect, useState } from "react";
+import { useJobs } from "@/controllers/useJobs";
 import { Card } from "@/components/ui/Card";
-import { QueryPanel } from "@/components/layout/QueryPanel";
+import { PageShell } from "@/components/ui/PageShell";
+import { AnnInputs, type DataSource } from "@/components/layout/AnnInputs";
+import { QuerySitePreview } from "@/components/map/QuerySitePreview";
 import { JobPill } from "@/components/status/StatusPill";
-import {
-  AnalysisEmptyState,
-  AnalysisRunningState,
-  AnalysisFailedState,
-} from "@/components/status/AnalysisStates";
-import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
-import {
-  CorrelationHeatmapCard,
-  ModelMetricsCard,
-  DetectionFloorBanner,
-} from "@/components/charts/ResultsSummaryCards";
-import { useState } from "react";
+import { AnalysisRunningState, AnalysisFailedState, AnalysisUploadEmptyState } from "@/components/status/AnalysisStates";
+import { AnnResults } from "@/components/results/AnnResults";
 import { useQueryParams } from "@/controllers/useQueryParams";
 import { useAnalysisJob } from "@/controllers/useAnalysisJob";
-import type { Audience, Gas } from "@/models/analysis.types";
+import { downloadTemplate, UPLOAD_REQUIREMENTS } from "@/lib/uploadTemplate";
 
-const GAS_UNIT: Record<Gas, string> = { SO2: "µg/m³", CH4: "ppb", CO2: "ppm" };
-
-function AudienceToggle({ value, onChange }: { value: Audience; onChange: (a: Audience) => void }) {
-  const options: { id: Audience; label: string }[] = [
-    { id: "researcher", label: "Researcher" },
-    { id: "policy", label: "Policy maker" },
-  ];
-  return (
-    <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
-      {options.map((opt) => (
-        <button
-          key={opt.id}
-          onClick={() => onChange(opt.id)}
-          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-            value === opt.id
-              ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm"
-              : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+const GAS_NAME = { SO2: "SO₂", CH4: "CH₄", CO2: "CO₂" } as const;
 
 export function NewAnalysisView() {
   const q = useQueryParams();
   const job = useAnalysisJob();
-  const [audience, setAudience] = useState<Audience>("researcher");
+  const { refresh } = useJobs();
+  // Keep the header bell / banner in step with this page's run.
+  useEffect(() => {
+    if (job.status !== "idle") void refresh();
+  }, [job.status, refresh]);
+  const [source, setSource] = useState<DataSource>("satellite");
+  const [file, setFile] = useState<File | null>(null);
+  const [label, setLabel] = useState("");
+  // The run the results on screen belong to; the inputs can change afterwards.
+  const [shown, setShown] = useState<{ source: DataSource; gas: typeof q.gas }>({ source: "satellite", gas: q.gas });
 
-  const runLabel =
-    job.status === "queued"
-      ? "Queued"
-      : job.status === "fetching"
-      ? "Fetching satellite data"
-      : "Running model";
+  const onRun = () => {
+    setShown({ source, gas: q.gas });
+    if (source === "upload") {
+      if (file) job.runAnalysis({ kind: "upload", gas: q.gas, file, label });
+    } else {
+      job.runAnalysis({ kind: "satellite", params: q.params });
+    }
+  };
+
+  const runLabel = job.status === "queued" ? "Queued" : job.status === "fetching" ? "Fetching satellite data" : "Running model";
+  const showing = job.status !== "idle";
+  const title =
+    shown.source === "upload"
+      ? job.result?.meta?.label || label || file?.name || "Uploaded data"
+      : `${q.lat.toFixed(2)}°, ${q.lng.toFixed(2)}°`;
 
   return (
-    <div className="flex flex-1 gap-5 p-5 overflow-hidden min-h-0">
-      <QueryPanel
+    <PageShell title="ANN" subtitle="Forecast a gas from satellite data or from your own readings" wide>
+      <AnnInputs
         lat={q.lat}
         lng={q.lng}
         radiusKm={q.radiusKm}
@@ -71,57 +59,43 @@ export function NewAnalysisView() {
         onGasChange={q.setGas}
         onStartDateChange={q.setStartDate}
         onEndDateChange={q.setEndDate}
-        onCoordsChange={q.setCoords}
-        onRun={() => job.runAnalysis(q.params)}
+        onRun={onRun}
+        source={source}
+        onSourceChange={setSource}
+        file={file}
+        onFileChange={setFile}
+        label={label}
+        onLabelChange={setLabel}
+        hasHome={q.hasHome}
+        onUseHome={q.useHome}
       />
 
-      <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0">
-        <Card className="px-5 py-3.5 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-[var(--color-text-primary)]">
-              {q.gas === "CH4" ? "CH₄" : q.gas === "CO2" ? "CO₂" : "SO₂"}
-              <span className="text-[var(--color-text-tertiary)]"> · Olkaria Site A · </span>
-              <span className="font-mono text-sm text-[var(--color-text-secondary)]">
-                {q.startDate} to {q.endDate}
-              </span>
+      {source === "satellite" && (
+        <div className="h-64 sm:h-80 flex flex-col">
+          <QuerySitePreview lat={q.lat} lng={q.lng} radiusKm={q.radiusKm} gas={q.gas} onCoordsChange={q.setCoords} />
+        </div>
+      )}
+
+      {showing && (
+        <Card className="px-4 sm:px-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+            {GAS_NAME[shown.gas]} <span className="text-[var(--color-text-tertiary)]">· {title}</span>
+          </span>
+          <JobPill job={job.status} />
+          {job.status === "complete" && (
+            <span className="inline-flex px-2.5 py-0.5 rounded-full bg-[var(--color-bg)] text-[var(--color-text-tertiary)] text-xs font-medium border border-[var(--color-border)]">
+              {shown.source === "upload" ? "Uploaded data" : "Satellite data"}
             </span>
-            <JobPill job={job.status} />
-          </div>
-          {job.status === "complete" && job.result && (
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-3 py-1 rounded-full bg-[var(--color-bg)] text-[var(--color-text-tertiary)] text-xs font-medium border border-[var(--color-border)]">
-                Test window: {job.result.timeSeries.dates.length} days
-              </span>
-              <AudienceToggle value={audience} onChange={setAudience} />
-            </div>
           )}
         </Card>
+      )}
 
-        {job.status === "idle" && (
-          <AnalysisEmptyState
-            lat={q.lat}
-            lng={q.lng}
-            radiusKm={q.radiusKm}
-            gas={q.gas}
-            onCoordsChange={q.setCoords}
-          />
-        )}
-        {job.isRunning && <AnalysisRunningState label={runLabel} />}
-        {job.status === "failed" && (
-          <AnalysisFailedState onRetry={() => job.runAnalysis(q.params)} />
-        )}
-
-        {job.status === "complete" && job.result && (
-          <>
-            <TimeSeriesChart data={job.result.timeSeries} unit={GAS_UNIT[q.gas]} />
-            <div className="grid grid-cols-2 gap-4 shrink-0">
-              <CorrelationHeatmapCard data={job.result.correlations} gas={q.gas} />
-              <ModelMetricsCard audience={audience} data={job.result.timeSeries} unit={GAS_UNIT[q.gas]} />
-            </div>
-            {q.gas === "SO2" && <DetectionFloorBanner />}
-          </>
-        )}
-      </div>
-    </div>
+      {job.status === "idle" && source === "upload" && (
+        <AnalysisUploadEmptyState requirements={UPLOAD_REQUIREMENTS} onDownloadTemplate={() => downloadTemplate(q.gas)} />
+      )}
+      {job.isRunning && <AnalysisRunningState label={runLabel} />}
+      {job.status === "failed" && <AnalysisFailedState onRetry={() => job.runAnalysis()} message={job.error} source={shown.source} />}
+      {job.status === "complete" && job.result && <AnnResults result={job.result} gas={shown.gas} source={shown.source} />}
+    </PageShell>
   );
 }

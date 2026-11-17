@@ -113,13 +113,15 @@ service in this stack yet to send it automatically. Revisit once one exists.
 
 **204**. **404**/**409** as above.
 
-## CO₂ ANN Forecast
+## Satellite ANN Forecast (SO₂ / CH₄ / CO₂)
 
-Merged into Module A: CO₂ is now a gas option alongside SO₂/CH₄, using the
-same coordinate + buffer-radius input (no file uploads). The analysis-service
-fetches CO₂ and weather data from satellite for the given site/window itself
-— simulated for now, see `analysis-service/src/satellite/simulate.py` — then
-runs the existing LSTM-GRU + SARIMA pipeline unchanged.
+Module A. All three gases share one real async pipeline and the same
+coordinate + buffer-radius input (no file uploads). The analysis-service
+fetches the requested gas and weather data from satellite for the given
+site/window itself — simulated per gas for now, see
+`analysis-service/src/satellite/simulate.py` — then runs the LSTM-GRU +
+SARIMA pipeline (`analysis-service/src/satellite_ann/pipeline.py`). Routes
+and the queue keep the historical `co2-ann` name.
 
 ### `POST /api/co2-ann/analyze`
 
@@ -127,6 +129,7 @@ application/json:
 
 | field | type | required |
 |---|---|---|
+| `gas` | `"SO2"` \| `"CH4"` \| `"CO2"` | no — defaults to `"CO2"` |
 | `latitude` | number | yes |
 | `longitude` | number | yes |
 | `radiusKm` | number, > 0 | yes |
@@ -138,7 +141,7 @@ application/json:
 { "jobId": "66f1a2b3c4d5e6f7a8b9c0d1" }
 ```
 
-**400** — `latitude`/`longitude`/`radiusKm` missing, not numeric, or `radiusKm <= 0`.
+**400** — `gas` isn't one of SO2/CH4/CO2, `latitude`/`longitude`/`radiusKm` missing or not numeric, or `radiusKm <= 0`.
 
 ### `GET /api/co2-ann/jobs/:jobId`
 
@@ -240,12 +243,51 @@ pending re-upload).
   both workers run against the same synthetic data the frontend simulates,
   so the rest of the stack (upload → queue → worker → Mongo → poll → UI) is
   fully exercisable without it.
-- **Module A (SO₂/CH₄ satellite)** — still frontend-simulated only; no
-  server route exists for SO₂/CH₄ yet (unlike CO₂, which now has a real
-  analysis-service pipeline behind it). Whether SO₂/CH₄ get a real backend,
-  and whether that stays coordinate-driven or moves to uploads, is still
-  open per the project notes.
-- **CO₂ ANN's satellite dataset** — simulated pending a decision with the
-  analysis team on which real GEE collection to use for CO₂ (TROPOMI, used
-  for SO₂/CH₄, doesn't resolve CO₂ well). One function to swap once decided:
-  `analysis-service/src/satellite/simulate.py`'s `fetch_satellite_co2_series`.
+- **Satellite datasets** — all three gases are simulated pending a decision
+  with the analysis team on real GEE collections (TROPOMI suits SO₂/CH₄ but
+  doesn't resolve CO₂ well). One function to swap:
+  `analysis-service/src/satellite/simulate.py`'s `fetch_satellite_series`.
+- **Real result charts on the New Analysis page** — the page still renders
+  placeholder charts; the real `timeSeries`/`correlations` payload is now
+  returned for every gas but not yet plotted.
+
+---
+
+## Upload-based ANN run: `POST /api/co2-ann/analyze-upload`
+
+Alternative to the coordinate/satellite route. Same queue, worker, job polling
+(`GET /api/co2-ann/jobs/:jobId`) and result shape; only the data source differs.
+
+- **Auth:** Bearer token (same as every route).
+- **Body:** `multipart/form-data`
+  - `gas` - `"SO2" | "CH4" | "CO2"` (required)
+  - `data` - ONE combined file: csv / tsv / xlsx / xls (required, max 25 MB)
+  - `label` - free-text site/dataset label (optional, max 120 chars)
+- **Columns** (case-insensitive; common aliases such as `temp`, `wind_speed`, `rain` accepted):
+  `date`, the gas column (`so2` / `ch4` / `co2`), `temperature`, `ws`, `pressure`, `precipitation`.
+- **Time resolution is detected, not assumed:** finer than daily is averaged to daily;
+  daily gaps up to 20% are filled by time interpolation; coarser than daily
+  (weekly/monthly) is rejected; fewer than 206 daily records is rejected.
+- **Response:** `202 { jobId }`.
+- **Result** gains `meta`: `{ source: "upload", gas, label?, rows, startDate, endDate,
+  detectedStep, resampledToDaily, filledDays }` (satellite runs: `{ source: "satellite", gas, rows }`).
+- **Validation failures** (bad columns, too short, monthly data...) fail the job
+  immediately without retries; `GET /jobs/:id` returns `{ stage: "failed", error: "<readable reason>" }`.
+
+Analysis-service counterpart: `POST /co2-ann/analyze-upload` (multipart: `gas`, `data`);
+422 responses carry `{ detail }` with the readable reason.
+
+## Added: jobs list + default location
+
+- `GET /api/jobs?stage=&module=&limit=` (auth) → `{ counts: {total,queued,running,complete,failed}, jobs: [{id,module,stage,dataSource,gas,gases,label,coordinates,error,createdAt,completedAt}] }`. Own jobs only, newest first, no result payloads. Open a finished run via `GET /api/co2-ann/jobs/:id` or `GET /api/dispersion/jobs/:id`.
+- `PATCH /api/auth/me/location` (auth) body `{latitude, longitude, label?}` or `{clear:true}` → `{ user }`. `user.defaultLocation` (`{label?,latitude,longitude}` or `null`) is also returned by `/login` and `/me`.
+
+## Added: account management
+
+- Every authenticated call re-checks the user in Mongo: deleted → 401, disabled → 403, role changes apply immediately.
+- `POST /api/auth/change-password` `{currentPassword,newPassword(>=8)}` → `{user}`; clears `mustChangePassword`.
+- `DELETE /api/auth/me` `{password}` → 204; removes the account, its runs, results and uploaded files (refused for the only active admin).
+- `user.mustChangePassword` is true after approval or an admin reset (temporary password).
+- Admin: `GET /api/users`, `PATCH /api/users/:id` `{role?,disabled?}`, `POST /api/users/:id/reset-password` → `{temporaryPassword}`, `DELETE /api/users/:id` (hard delete incl. data). The last active admin can't be demoted, disabled or deleted.
+- `DELETE /api/jobs/:id` removes one of your own finished/failed runs and its output.
+- `POST /api/auth/login` is limited to 10 attempts / 15 min per IP + email (429).

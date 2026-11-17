@@ -1,28 +1,47 @@
 import { UserMenu } from "@/components/layout/UserMenu";
+import { Notifications } from "@/components/layout/Notifications";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { BrandMark } from "@/components/ui/BrandMark";
+import { BRAND_NAME } from "@/lib/brand";
 import type { Page } from "@/models/analysis.types";
+import type { JobSummary } from "@/models/jobs.types";
 
 const PAGE_LABEL: Record<Page, string> = {
   overview: "Overview",
-  analysis: "Satellite ANN analysis",
   dispersion: "Gas dispersion",
-  library: "Results library",
+  analysis: "ANN",
+  library: "Results",
   settings: "Settings",
+  admin: "Admin",
 };
 
-export function Header({ page, onOpenSettings }: { page: Page; onOpenSettings: () => void }) {
+export function Header({
+  page,
+  onOpenSettings,
+  onOpenJob,
+  onSeeAll,
+}: {
+  page: Page;
+  onOpenSettings: () => void;
+  onOpenJob: (job: JobSummary) => void;
+  onSeeAll: () => void;
+}) {
   return (
-    <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-6 py-3.5 flex items-center justify-between shrink-0 z-10">
-      <div className="flex items-center gap-1.5 text-sm min-w-0">
-        <span className="text-[var(--color-text-quaternary)] truncate">Olkaria observatory</span>
-        <span className="text-[var(--color-text-disabled)]">/</span>
-        <span className="font-medium text-[var(--color-text-primary)] truncate">{PAGE_LABEL[page]}</span>
+    <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 shrink-0 z-10">
+      <div className="flex items-center gap-2 text-sm min-w-0">
+        <span className="md:hidden shrink-0">
+          <BrandMark size={24} />
+        </span>
+        <span className="hidden sm:inline text-[var(--color-text-quaternary)] truncate">{BRAND_NAME}</span>
+        <span className="hidden sm:inline text-[var(--color-text-disabled)]">/</span>
+        <span className="font-semibold sm:font-medium text-[var(--color-text-primary)] truncate">{PAGE_LABEL[page]}</span>
       </div>
-      <div className="flex items-center gap-4 shrink-0">
-        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] text-[11px] font-medium text-[var(--color-text-tertiary)]">
+      <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+        <span className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-bg)] border border-[var(--color-border)] text-[11px] font-medium text-[var(--color-text-tertiary)]">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)]" />
           Private workspace
         </span>
+        <Notifications onOpenJob={onOpenJob} onSeeAll={onSeeAll} />
         <ThemeToggle />
         <UserMenu onOpenSettings={onOpenSettings} />
       </div>

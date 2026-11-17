@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/ui/BrandMark";
+import { BRAND_NAME } from "@/lib/brand";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function AuthLayout({
@@ -19,7 +20,7 @@ export function AuthLayout({
       <header className="px-6 py-4 flex items-center justify-between">
         <Link to="/" className="inline-flex items-center gap-3">
           <BrandMark size={32} />
-          <span className="text-sm font-semibold text-[var(--color-text-primary)]">Olkaria Gas Dashboard</span>
+          <span className="text-sm font-semibold text-[var(--color-text-primary)]">{BRAND_NAME}</span>
         </Link>
         <ThemeToggle />
       </header>

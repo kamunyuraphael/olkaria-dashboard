@@ -6,6 +6,7 @@ import { errorHandler } from "@/middleware/errorHandler.middleware.js";
 
 export function createApp() {
   const app = express();
+  app.set("trust proxy", 1); // behind Render's proxy: real client IP for rate limiting
 
   // CLIENT_ORIGIN may list several origins, comma-separated (e.g. the Vercel
   // production URL plus a custom domain).

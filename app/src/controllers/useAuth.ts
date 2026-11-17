@@ -2,6 +2,8 @@ import { useState, useCallback, useContext, createContext, createElement, useEff
 import type { ReactNode } from "react";
 import type { User, Credentials, AccessRequest } from "@/models/auth.types";
 import { AUTH_TOKEN_STORAGE_KEY, apiUrl } from "@/lib/apiClient";
+import { saveDefaultLocation } from "@/lib/jobsClient";
+import { changePasswordRequest, deleteAccountRequest } from "@/lib/adminClient";
 
 /**
  * Owns authentication state. Real now: login/me/logout/requestAccess all
@@ -20,6 +22,11 @@ interface AuthContextValue {
   login: (creds: Credentials) => Promise<void>;
   requestAccess: (req: AccessRequest) => Promise<void>;
   logout: () => void;
+  /** Saves (or with null, clears) the user's default location. Throws on failure. */
+  changePassword: (current: string, next: string) => Promise<void>;
+  /** Permanently deletes the account and all its runs. Throws on failure. */
+  deleteAccount: (password: string) => Promise<void>;
+  updateLocation: (loc: { latitude: number; longitude: number; label?: string } | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -55,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
       setUser(loggedInUser);
     } catch {
-      setError("Could not reach the server. Please try again.");
+      setError("Could not reach the server. It may be waking up after a quiet period — wait about 30 seconds and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +97,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateLocation = useCallback(
+    async (loc: { latitude: number; longitude: number; label?: string } | null) => {
+      const updated = (await saveDefaultLocation(loc ?? { clear: true })) as User;
+      setUser(updated);
+    },
+    []
+  );
+
+  const changePassword = useCallback(async (current: string, next: string) => {
+    setUser((await changePasswordRequest(current, next)) as User);
+  }, []);
+
+  const deleteAccount = useCallback(async (password: string) => {
+    await deleteAccountRequest(password);
+    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    setUser(null);
+  }, []);
+
   // Restore a session from a stored token on load.
   useEffect(() => {
     const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
@@ -119,6 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     requestAccess,
     logout,
+    updateLocation,
+    changePassword,
+    deleteAccount,
   };
 
   return createElement(AuthContext.Provider, { value }, children);

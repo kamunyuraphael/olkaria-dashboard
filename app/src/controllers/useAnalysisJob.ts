@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { JobStatus, AnalysisQueryParams } from "@/models/analysis.types";
 import type { Co2AnnResult } from "@/models/co2ann.types";
-import { submitCo2AnnAnalysis, pollCo2AnnAnalysis } from "@/lib/co2annClient";
+import type { Gas } from "@/models/analysis.types";
+import { submitCo2AnnAnalysis, submitCo2AnnUpload, pollCo2AnnAnalysis } from "@/lib/co2annClient";
+
+/** What a run is fed from: satellite coordinates, or one uploaded data file. */
+export type AnalysisInput =
+  | { kind: "satellite"; params: AnalysisQueryParams }
+  | { kind: "upload"; gas: Gas; file: File; label?: string };
 
 /**
  * Owns the analysis job lifecycle for Module A (SO2/CH4/CO2).
@@ -18,6 +24,7 @@ export function useAnalysisJob() {
   const [result, setResult] = useState<Co2AnnResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const lastInputRef = useRef<AnalysisInput | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -52,9 +59,11 @@ export function useAnalysisJob() {
   );
 
   const runAnalysis = useCallback(
-    (params?: AnalysisQueryParams) => {
+    (input?: AnalysisInput) => {
       if (status === "queued" || status === "fetching" || status === "running") return;
-      if (!params) return;
+      const run = input ?? lastInputRef.current;
+      if (!run) return;
+      lastInputRef.current = run;
 
       stopPolling();
       setError(null);
@@ -63,14 +72,17 @@ export function useAnalysisJob() {
 
       (async () => {
         try {
-          const { jobId } = await submitCo2AnnAnalysis({
-            gas: params.gas,
-            latitude: params.lat,
-            longitude: params.lng,
-            radiusKm: params.radiusKm,
-            startDate: params.startDate,
-            endDate: params.endDate,
-          });
+          const { jobId } =
+            run.kind === "upload"
+              ? await submitCo2AnnUpload({ gas: run.gas, file: run.file, label: run.label })
+              : await submitCo2AnnAnalysis({
+                  gas: run.params.gas,
+                  latitude: run.params.lat,
+                  longitude: run.params.lng,
+                  radiusKm: run.params.radiusKm,
+                  startDate: run.params.startDate,
+                  endDate: run.params.endDate,
+                });
           pollTimerRef.current = setInterval(() => pollOnce(jobId), 2000);
           void pollOnce(jobId);
         } catch (err) {

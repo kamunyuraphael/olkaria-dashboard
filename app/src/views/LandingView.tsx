@@ -1,15 +1,16 @@
 import { Link } from "react-router-dom";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 
 function Logo() {
   return (
     <Link to="/" className="flex items-center gap-3">
       <BrandMark size={32} />
       <span className="text-[15px] font-semibold text-[var(--color-text-primary)] leading-tight">
-        Olkaria Gas
+        {BRAND_NAME}
         <span className="block text-[9.5px] font-semibold tracking-[0.12em] text-[var(--color-text-quaternary)] uppercase">
-          Concentration Dashboard
+          {BRAND_TAGLINE}
         </span>
       </span>
     </Link>
@@ -73,7 +74,7 @@ function TopoArt() {
           <span className="relative inline-flex rounded-full h-3 w-3 bg-[var(--color-primary)]" />
         </span>
         <span className="text-[10px] font-semibold tracking-[0.15em] text-[var(--color-text-secondary)] uppercase">
-          Olkaria I&ndash;V
+          Your site
         </span>
       </div>
 
@@ -134,7 +135,7 @@ export function LandingView() {
           <div>
             <p className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wider mb-4">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
-              Olkaria Geothermal Field &middot; Research Portal
+              Gas analysis &middot; Research Portal
             </p>
             <h1 className="text-[2.75rem] leading-[1.08] font-semibold text-[var(--color-text-primary)] tracking-tight">
               Reading the <em className="not-italic text-[var(--color-primary)] font-semibold">invisible</em> from
@@ -142,7 +143,7 @@ export function LandingView() {
             </h1>
             <p className="mt-5 text-base text-[var(--color-text-tertiary)] leading-relaxed max-w-lg">
               A focused workspace for requesting and reviewing satellite-derived SO&#8322;, CH&#8324; and CO&#8322;
-              forecasts, and AERMOD-style gas dispersion over Kenya's geothermal frontier &mdash; built to show what
+              forecasts, and gas dispersion mapping for any site you study &mdash; built to show what
               was actually measured, not invented.
             </p>
             <div className="mt-8 flex items-center gap-3">
@@ -182,7 +183,7 @@ export function LandingView() {
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
           <span className="font-mono text-sm text-[var(--color-text-quaternary)] shrink-0">01&mdash;</span>
           <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed flex-1">
-            Geothermal energy is a defining part of Kenya's low-carbon future. Understanding its atmospheric
+            Whether you monitor a geothermal field, a landfill or a farm, understanding a site's atmospheric
             footprint begins with honest, careful observation.
           </p>
           <span className="text-[10.5px] font-semibold tracking-wider text-[var(--color-text-quaternary)] uppercase text-right shrink-0">
@@ -205,7 +206,7 @@ export function LandingView() {
             {
               n: "02",
               t: "Pipeline runs",
-              d: "Satellite and reanalysis data are retrieved, retrieval coverage is checked, and the ANN or AERMOD-style dispersion model is fitted.",
+              d: "Satellite and reanalysis data are retrieved, retrieval coverage is checked, and the ANN or dispersion model is fitted.",
             },
             {
               n: "03",
@@ -238,7 +239,7 @@ export function LandingView() {
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Models</h3>
             <ul className="space-y-2 text-sm text-[var(--color-text-tertiary)]">
               <li>LSTM-GRU neural network — satellite ANN forecasting</li>
-              <li>AERMOD-style Gaussian plume dispersion — spatial concentration fields</li>
+              <li>Gaussian plume gas dispersion — spatial concentration fields</li>
               <li>Metrics: RMSE, MAE, R², reported alongside a coverage and detection-floor check</li>
             </ul>
           </div>
@@ -326,7 +327,7 @@ export function LandingView() {
       <footer className="border-t border-[var(--color-border)] px-6 py-8">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <p className="text-xs text-[var(--color-text-quaternary)]">
-            Built on ANN and AERMOD-style dispersion research for the Olkaria Geothermal Field.
+            Built on ANN forecasting and gas dispersion research.
           </p>
           <p className="text-xs text-[var(--color-text-quaternary)]">Sentinel-5P data © ESA / Copernicus</p>
         </div>

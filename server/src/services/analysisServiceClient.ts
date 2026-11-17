@@ -32,6 +32,9 @@ setGlobalDispatcher(
   })
 );
 
+/** The analysis-service rejected the INPUT (422) - retrying can't help. */
+export class AnalysisValidationError extends Error {}
+
 function serviceHeaders(extra: Record<string, string> = {}): Record<string, string> {
   return env.ANALYSIS_SERVICE_TOKEN ? { ...extra, "X-Service-Token": env.ANALYSIS_SERVICE_TOKEN } : extra;
 }
@@ -39,6 +42,8 @@ function serviceHeaders(extra: Record<string, string> = {}): Record<string, stri
 export interface Co2AnnAnalysisOutput {
   timeSeries: { dates: string[]; actual: number[]; ann: (number | null)[]; sarima: number[] };
   correlations: { feature: string; r: number }[];
+  /** Provenance + data-prep notes from the analysis-service (source, time step, gaps filled...). */
+  meta?: Record<string, unknown>;
 }
 
 export type SatelliteGas = "SO2" | "CH4" | "CO2";
@@ -82,6 +87,42 @@ export async function runCo2AnnAnalysis(input: {
       { feature: "Precipitation", r: -0.27 },
     ],
   };
+}
+
+/** Same forecast as runCo2AnnAnalysis, fed from one user-uploaded combined file. */
+export async function runCo2AnnUploadAnalysis(input: {
+  gas: SatelliteGas;
+  filePath: string;
+}): Promise<Co2AnnAnalysisOutput> {
+  if (env.ANALYSIS_SERVICE_URL) {
+    const form = new FormData();
+    form.append("gas", input.gas);
+    form.append("data", new Blob([await readFile(input.filePath)]), path.basename(input.filePath));
+    const res = await fetch(`${env.ANALYSIS_SERVICE_URL}/co2-ann/analyze-upload`, {
+      method: "POST",
+      headers: serviceHeaders(),
+      body: form,
+    });
+    if (!res.ok) {
+      // 422 carries a readable validation message (missing column, monthly
+      // data, too short...) - pass it through so it becomes the job's
+      // failureReason and the user sees exactly what to fix.
+      let detail = "";
+      try {
+        detail = ((await res.json()) as { detail?: string }).detail ?? "";
+      } catch {
+        /* non-JSON error body */
+      }
+      if (res.status === 422) throw new AnalysisValidationError(detail || "The uploaded file could not be used.");
+      throw new Error(detail || `analysis-service co2-ann upload error: ${res.status}`);
+    }
+    return (await res.json()) as Co2AnnAnalysisOutput;
+  }
+
+  // No analysis-service configured: reuse the simulated satellite output so
+  // the queue/worker/API layer is still exercisable end to end.
+  const simulated = await runCo2AnnAnalysis({ gas: input.gas, latitude: 0, longitude: 0, radiusKm: 1 });
+  return { ...simulated, meta: { source: "upload", gas: input.gas, simulated: true } };
 }
 
 export interface DispersionAnalysisOutput {

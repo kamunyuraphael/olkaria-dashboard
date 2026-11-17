@@ -37,6 +37,38 @@ export async function submitCo2AnnAnalysis(req: AuthedRequest, res: Response) {
   return res.status(202).json({ jobId: analysisJob._id.toString() });
 }
 
+// POST /api/co2-ann/analyze-upload  (multipart/form-data)
+// Fields: gas ("SO2" | "CH4" | "CO2"), label? (free text), data (one combined
+// csv/tsv/xlsx: date, the gas reading, temperature, ws, pressure,
+// precipitation). Same queue, worker and result shape as the satellite
+// route - only where the data comes from differs.
+export async function submitCo2AnnUpload(req: AuthedRequest, res: Response) {
+  const { gas, label } = req.body ?? {};
+  const file = req.file;
+
+  if (gas !== "SO2" && gas !== "CH4" && gas !== "CO2") {
+    return res.status(400).json({ error: "gas must be one of SO2, CH4, CO2." });
+  }
+  if (!file) {
+    return res.status(400).json({ error: "A data file is required (field name: data)." });
+  }
+  const siteLabel = typeof label === "string" ? label.trim().slice(0, 120) : "";
+
+  const analysisJob = await AnalysisJob.create({
+    moduleType: "co2-ann",
+    stage: "queued",
+    requestedBy: req.userId,
+    dataSource: "upload",
+    gas,
+    siteLabel: siteLabel || undefined,
+    inputFiles: [{ role: "data", storedPath: file.path, originalName: file.originalname }],
+  });
+
+  await co2AnnQueue.add("analyze", { jobId: analysisJob._id.toString() });
+
+  return res.status(202).json({ jobId: analysisJob._id.toString() });
+}
+
 // GET /api/co2-ann/jobs/:jobId
 export async function getCo2AnnJob(req: AuthedRequest, res: Response) {
   const analysisJob = await AnalysisJob.findOne({
@@ -52,7 +84,7 @@ export async function getCo2AnnJob(req: AuthedRequest, res: Response) {
       stage: "complete",
       startedAt: analysisJob.startedAt?.getTime(),
       result: result
-        ? { timeSeries: result.timeSeries, correlations: result.correlations }
+        ? { timeSeries: result.timeSeries, correlations: result.correlations, meta: result.meta }
         : undefined,
     });
   }

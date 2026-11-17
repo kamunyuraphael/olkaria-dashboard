@@ -129,7 +129,7 @@ export function ContourMap({
         zoomControl: true,
         scrollWheelZoom,
         attributionControl: true,
-      }).setView([-0.9, 36.29], 12); // Olkaria, Kenya - sane default before data fits bounds
+      }).setView([-0.9, 36.29], 12); // placeholder view before the data fits bounds
 
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",

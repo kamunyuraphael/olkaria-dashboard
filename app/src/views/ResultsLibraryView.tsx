@@ -1,146 +1,225 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { GasBadge } from "@/components/ui/GasBadge";
-import { StatusPill } from "@/components/status/StatusPill";
-import { LIBRARY_ROWS } from "@/lib/mockData";
+import { PageShell, primaryBtn, outlineBtn, inputClass } from "@/components/ui/PageShell";
+import { StagePill, jobTitle, jobSubtitle, timeAgo } from "@/components/results/JobBits";
+import { AnnResults } from "@/components/results/AnnResults";
+import { DispersionResults } from "@/components/results/DispersionResults";
+import { useJobs } from "@/controllers/useJobs";
+import { fetchStoredResult } from "@/lib/jobsClient";
+import { deleteJob } from "@/lib/adminClient";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import type { Co2AnnResult } from "@/models/co2ann.types";
+import type { DispersionResult } from "@/models/dispersion.types";
+import type { Gas, Page } from "@/models/analysis.types";
+import type { JobFilter, JobSummary } from "@/models/jobs.types";
 
-function StatChip({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "primary" | "warning" | "success" | "danger";
-}) {
-  const toneClass = {
-    primary: "text-[var(--color-primary)]",
-    warning: "text-[var(--color-warning)]",
-    success: "text-[var(--color-success)]",
-    danger: "text-[var(--color-danger)]",
-  }[tone];
+const FILTERS: { id: JobFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "active", label: "In progress" },
+  { id: "complete", label: "Completed" },
+  { id: "failed", label: "Failed" },
+];
+
+function matches(job: JobSummary, f: JobFilter) {
+  if (f === "all") return true;
+  if (f === "active") return job.stage === "queued" || job.stage === "running";
+  return job.stage === f;
+}
+
+function StoredResult({ job, onBack }: { job: JobSummary; onBack: () => void }) {
+  const { refresh } = useJobs();
+  const [askDelete, setAskDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [delError, setDelError] = useState<string | null>(null);
+  const canDelete = job.stage === "complete" || job.stage === "failed";
+  const doDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteJob(job.id);
+      await refresh();
+      onBack();
+    } catch (e) {
+      setDelError(e instanceof Error ? e.message : "Could not delete.");
+      setDeleting(false);
+      setAskDelete(false);
+    }
+  };
+  const [ann, setAnn] = useState<Co2AnnResult | null>(null);
+  const [disp, setDisp] = useState<DispersionResult[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(job.stage === "complete");
+
+  useEffect(() => {
+    if (job.stage !== "complete") return;
+    let cancelled = false;
+    setLoading(true);
+    fetchStoredResult(job)
+      .then((r) => {
+        if (cancelled) return;
+        if (r.ann) setAnn(r.ann);
+        else if (r.dispersion) setDisp(r.dispersion);
+        else setError(r.error ?? "The stored output could not be found.");
+      })
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : "Could not load this result."))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [job]);
 
   return (
-    <div className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)]">
-      <span className={`text-sm font-bold ${toneClass}`}>{value}</span>
-      <span className="text-xs text-[var(--color-text-tertiary)]">{label}</span>
-    </div>
+    <PageShell
+      title={jobTitle(job)}
+      subtitle={[jobSubtitle(job), timeAgo(job.createdAt)].filter(Boolean).join(" · ")}
+      actions={
+        <button onClick={onBack} className={outlineBtn}>
+          ← All results
+        </button>
+      }
+    >
+      <div className="flex items-center gap-2">
+        <StagePill stage={job.stage} />
+        {canDelete && (
+          <button onClick={() => setAskDelete(true)} className="ml-auto text-xs font-medium text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] cursor-pointer">
+            Delete this run
+          </button>
+        )}
+      </div>
+      {delError && <p className="text-sm text-[var(--color-danger)]">{delError}</p>}
+      {askDelete && (
+        <ConfirmDialog title="Delete this run?" confirmLabel="Delete" danger busy={deleting} onConfirm={doDelete} onCancel={() => setAskDelete(false)}>
+          The run and its saved output are removed permanently.
+        </ConfirmDialog>
+      )}
+
+      {job.stage === "failed" && (
+        <Card className="p-5 text-sm text-[var(--color-text-secondary)] leading-relaxed">
+          <p className="font-medium text-[var(--color-danger)] mb-1">This run failed</p>
+          {job.error}
+        </Card>
+      )}
+      {(job.stage === "queued" || job.stage === "running") && (
+        <Card className="p-5 text-sm text-[var(--color-text-secondary)]">
+          This run is still in progress. It will appear here as soon as it finishes.
+        </Card>
+      )}
+      {loading && <p className="text-sm text-[var(--color-text-quaternary)]">Loading stored output…</p>}
+      {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+      {ann && <AnnResults result={ann} gas={(job.gas ?? "CO2") as Gas} source={job.dataSource} />}
+      {disp && <DispersionResults result={disp} />}
+    </PageShell>
   );
 }
 
-export function ResultsLibraryView({ onView }: { onView: () => void }) {
-  const [search, setSearch] = useState("");
+export function ResultsLibraryView({
+  filter,
+  onFilterChange,
+  selected,
+  onSelect,
+  onNavigate,
+}: {
+  filter: JobFilter;
+  onFilterChange: (f: JobFilter) => void;
+  selected: JobSummary | null;
+  onSelect: (j: JobSummary | null) => void;
+  onNavigate: (p: Page) => void;
+}) {
+  const { jobs, counts, loading, error, refresh } = useJobs();
+  const [query, setQuery] = useState("");
 
-  const total = LIBRARY_ROWS.length;
-  const running = LIBRARY_ROWS.filter((r) => r.status === "running").length;
-  const complete = LIBRARY_ROWS.filter((r) => r.status === "complete").length;
-  const failed = LIBRARY_ROWS.filter((r) => r.status === "failed").length;
+  // Refresh on arrival so a just-finished run shows up.
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return LIBRARY_ROWS;
-    return LIBRARY_ROWS.filter((row) =>
-      `${row.site} ${row.gas} ${row.status}`.toLowerCase().includes(q)
+  const tally: Record<JobFilter, number> = {
+    all: counts.total,
+    active: counts.queued + counts.running,
+    complete: counts.complete,
+    failed: counts.failed,
+  };
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return jobs.filter(
+      (j) =>
+        matches(j, filter) &&
+        (!q || `${jobTitle(j)} ${jobSubtitle(j)} ${j.stage}`.toLowerCase().includes(q))
     );
-  }, [search]);
+  }, [jobs, filter, query]);
+
+  // Keep the open run fresh (e.g. opened from a notification while it was still running).
+  const live = selected ? jobs.find((j) => j.id === selected.id) ?? selected : null;
+  if (live) return <StoredResult job={live} onBack={() => onSelect(null)} />;
 
   return (
-    <div className="flex-1 p-5 overflow-y-auto">
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Results Library</h2>
-          <p className="text-xs text-[var(--color-text-quaternary)] mt-0.5">
-            Past analyses — click View to open in the analysis panel
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <StatChip label="total" value={total} tone="primary" />
-          <StatChip label="running" value={running} tone="warning" />
-          <StatChip label="complete" value={complete} tone="success" />
-          <StatChip label="failed" value={failed} tone="danger" />
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <div className="relative max-w-xs">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-quaternary)]"
-          >
-            <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-            <path d="M9.5 9.5L13 13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by site, gas or status…"
-            className="w-full pl-8 pr-3 py-2 text-sm border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] placeholder-[var(--color-text-disabled)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-colors"
-          />
-        </div>
-      </div>
-
-      <Card>
-        {filtered.length === 0 ? (
-          <div className="px-5 py-14 text-center">
-            <p className="text-sm text-[var(--color-text-tertiary)]">No results match “{search}”.</p>
+    <PageShell title="Results" subtitle="Every run you've made, saved with its output">
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="flex gap-1.5 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-1">
+          {FILTERS.map((f) => (
             <button
-              onClick={() => setSearch("")}
-              className="mt-3 text-xs font-medium text-[var(--color-primary)] hover:underline cursor-pointer"
+              key={f.id}
+              onClick={() => onFilterChange(f.id)}
+              className={`shrink-0 px-3.5 py-2 rounded-full text-sm font-medium border transition-colors cursor-pointer ${
+                filter === f.id
+                  ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
+                  : "bg-[var(--color-surface)] text-[var(--color-text-tertiary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
+              }`}
             >
-              Clear search
+              {f.label} <span className="opacity-70">{tally[f.id]}</span>
             </button>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)]">
-                {["Site", "Gas", "Date Range", "Coverage", "Status", ""].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-5 py-3 text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-bg-subtle)] transition-colors"
-                >
-                  <td className="px-5 py-4 font-medium text-[var(--color-text-primary)]">{row.site}</td>
-                  <td className="px-5 py-4">
-                    <GasBadge gas={row.gas} />
-                  </td>
-                  <td className="px-5 py-4 font-mono text-xs text-[var(--color-text-tertiary)]">
-                    {row.start} → {row.end}
-                  </td>
-                  <td className="px-5 py-4 font-mono text-xs text-[var(--color-text-tertiary)]">{row.coverage}</td>
-                  <td className="px-5 py-4">
-                    <StatusPill status={row.status} />
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    {row.status === "complete" && (
-                      <button
-                        onClick={onView}
-                        className="text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)] rounded-lg px-3 py-1.5 hover:bg-[var(--color-primary-subtle)] transition-colors cursor-pointer"
-                      >
-                        View
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-    </div>
+          ))}
+        </div>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search runs…"
+          className={`${inputClass} sm:max-w-[240px]`}
+        />
+      </div>
+
+      {error && <p className="text-sm text-[var(--color-danger)]">Couldn't reach the server — showing what was loaded earlier.</p>}
+      {loading && jobs.length === 0 && <p className="text-sm text-[var(--color-text-quaternary)]">Loading…</p>}
+
+      {!loading && rows.length === 0 && (
+        <Card className="p-8 text-center">
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">
+            {jobs.length === 0 ? "No runs yet" : "Nothing matches this filter"}
+          </p>
+          <p className="text-sm text-[var(--color-text-tertiary)] mt-1 mb-4">
+            {jobs.length === 0 ? "Finished runs are saved here automatically." : "Try another filter or clear the search."}
+          </p>
+          {jobs.length === 0 && (
+            <div className="flex flex-wrap justify-center gap-2">
+              <button onClick={() => onNavigate("dispersion")} className={primaryBtn}>Gas dispersion</button>
+              <button onClick={() => onNavigate("analysis")} className={outlineBtn}>ANN</button>
+            </div>
+          )}
+        </Card>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {rows.map((j) => (
+          <button
+            key={j.id}
+            onClick={() => onSelect(j)}
+            className="text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl px-4 py-3 hover:border-[var(--color-primary)] transition-colors cursor-pointer flex items-center justify-between gap-3"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-[var(--color-text-primary)] truncate">{jobTitle(j)}</span>
+              <span className="block text-xs text-[var(--color-text-quaternary)] mt-0.5 truncate">
+                {[jobSubtitle(j), timeAgo(j.createdAt)].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+            <span className="shrink-0 flex items-center gap-2">
+              <StagePill stage={j.stage} />
+              <span className="hidden sm:inline text-xs font-medium text-[var(--color-primary)]">
+                {j.stage === "complete" ? "View" : "Details"}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </PageShell>
   );
 }
