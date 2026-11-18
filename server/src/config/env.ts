@@ -19,6 +19,13 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // Optional SMTP: when set, temporary passwords are also emailed to the user.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().optional(),
+  APP_NAME: z.string().default("GasWatch"),
   UPLOAD_DIR: z.string().default("./src/uploads"),
 });
 

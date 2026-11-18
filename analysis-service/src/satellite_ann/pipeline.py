@@ -61,7 +61,10 @@ def compute_correlations(df: pd.DataFrame, target_col: str) -> list[dict]:
 
     results = []
     for feature in ["temperature", "ws", "pressure", "precipitation"]:
-        r, _ = pearsonr(clean[target_col], clean[feature])
+        if clean[feature].nunique() < 2 or clean[target_col].nunique() < 2:
+            r = 0.0  # a constant column has no defined correlation; NaN is not valid JSON
+        else:
+            r, _ = pearsonr(clean[target_col], clean[feature])
         results.append({"feature": feature.capitalize() if feature != "ws" else "Wind Speed", "r": round(float(r), 4)})
     return results
 
@@ -82,10 +85,11 @@ def _augment(X: np.ndarray, y: np.ndarray, noise_factor: float) -> tuple[np.ndar
     return X_aug, y_aug
 
 
-def run_ann(df: pd.DataFrame, target_col: str) -> tuple[np.ndarray, np.ndarray]:
+def run_ann(df: pd.DataFrame, target_col: str) -> tuple[np.ndarray, np.ndarray, dict]:
     """Cells 7, 9-10: full LSTM-GRU train + bias-corrected test predict.
-    Returns (y_test_actual, y_test_pred_corrected), both inverse-scaled
-    to the target gas's real units. Imports Keras lazily - it's the
+    Returns (y_test_actual, y_test_pred_corrected, future), the first two
+    inverse-scaled to the target gas's real units; `future` is the notebook's
+    cell 8/11 recursive FUTURE_DAYS-day-ahead forecast (see _future_forecast). Imports Keras lazily - it's the
     heaviest dependency and only this function needs it."""
     from sklearn.model_selection import train_test_split
     from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -164,7 +168,53 @@ def run_ann(df: pd.DataFrame, target_col: str) -> tuple[np.ndarray, np.ndarray]:
     bias = y_test_inv.mean() - y_test_pred_inv.mean()
     y_test_pred_corrected = y_test_pred_inv + bias
 
-    return y_test_inv.flatten(), y_test_pred_corrected.flatten()
+    future = _future_forecast(model, work, features, target, scaler_features, scaler_target, scaled_features)
+    return y_test_inv.flatten(), y_test_pred_corrected.flatten(), future
+
+
+FUTURE_DAYS = 365
+
+
+def _future_forecast(model, work, features, target, scaler_features, scaler_target, scaled_features) -> dict:
+    """Notebook cells 8 + 11: roll the last ANN_TIME_STEP-day window forward
+    one day at a time, feeding each prediction back in as the next target
+    value, then shift the whole path by the notebook's bias correction.
+
+    Two deliberate differences from the notebook, both to keep inputs sane:
+    the new day's calendar features are passed through the fitted feature
+    scaler (the notebook wrote raw, unscaled values into scaled space), and
+    the weather inputs (temperature, wind, pressure, rain) are held at their
+    last observed values since the future weather is unknown."""
+    cols = list(features.columns)
+    window = scaled_features[-ANN_TIME_STEP:].copy()
+    last_date = work.index[-1]
+    preds: list[float] = []
+
+    for i in range(FUTURE_DAYS):
+        pred = float(model(window[np.newaxis, :, :], training=False).numpy()[0][0])
+        preds.append(pred)
+
+        d = last_date + pd.Timedelta(days=i + 1)
+        doy = d.dayofyear
+        woy = int(d.isocalendar()[1])
+        row = features.iloc[-1].copy()
+        row["day_of_week"] = d.dayofweek
+        row["month"] = d.month
+        row["week_of_year"] = woy
+        row["day_sin"] = np.sin(2 * np.pi * doy / 365.25)
+        row["day_cos"] = np.cos(2 * np.pi * doy / 365.25)
+        row["week_sin"] = np.sin(2 * np.pi * woy / 52)
+        row["week_cos"] = np.cos(2 * np.pi * woy / 52)
+        scaled_row = scaler_features.transform(pd.DataFrame([row[cols].to_numpy()], columns=cols))[0]
+        window = np.vstack((window[1:], scaled_row))
+
+    inv = scaler_target.inverse_transform(np.array(preds).reshape(-1, 1)).flatten()
+    inv = inv + (float(target.iloc[-ANN_TIME_STEP:].mean()) - float(inv.mean()))
+    dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=FUTURE_DAYS, freq="D")
+    return {
+        "dates": [d.strftime("%Y-%m-%d") for d in dates],
+        "values": [round(float(v), 3) for v in inv],
+    }
 
 
 def run_sarima(df: pd.DataFrame, target_col: str) -> tuple[pd.Series, pd.Series]:
@@ -186,32 +236,15 @@ def run_sarima(df: pd.DataFrame, target_col: str) -> tuple[pd.Series, pd.Series]
     return test, forecast.predicted_mean
 
 
-def run_satellite_ann(
-    gas: str,
-    latitude: float,
-    longitude: float,
-    radius_km: float,
-    start_date: str | None = None,
-    end_date: str | None = None,
-) -> dict:
-    """Entry point for Module A's satellite ANN forecast, for any of
-    `SUPPORTED_GASES` ("SO2", "CH4", "CO2")."""
-    if gas not in SATELLITE_ANN_TARGET_COLUMN:
-        raise ValueError(f"Unsupported gas for satellite ANN: {gas!r} (expected one of {SUPPORTED_GASES})")
-    target_col = SATELLITE_ANN_TARGET_COLUMN[gas]
-
-    merged = fetch_satellite_series(gas, latitude, longitude, radius_km, start_date, end_date)
-
-    if len(merged) <= SARIMA_TEST_SIZE + ANN_TIME_STEP:
-        raise UnreadableFileError(
-            f"Requested date range is too short to run the forecast (need more than "
-            f"{SARIMA_TEST_SIZE + ANN_TIME_STEP} days of data, got {len(merged)})."
-        )
-
+def _forecast(merged: pd.DataFrame, target_col: str) -> dict:
+    """Everything downstream of getting a daily dataframe (date, <gas>,
+    temperature, ws, pressure, precipitation): correlations, SARIMA, ANN
+    and the notebook's cell-21 pairing. Shared verbatim by the satellite
+    path and the user-upload path so there is one implementation."""
     correlations = compute_correlations(merged, target_col)
 
     test_actual, forecast_values = run_sarima(merged, target_col)
-    _, ann_pred = run_ann(merged, target_col)
+    _, ann_pred, future = run_ann(merged, target_col)
 
     # Cell 21: truncate the ANN's own test predictions to the SARIMA test
     # window's length and pair them with its dates - reproducing the
@@ -231,4 +264,169 @@ def run_satellite_ann(
             "sarima": [round(float(v), 3) for v in forecast_values.to_numpy()],
         },
         "correlations": correlations,
+        "future": future,
     }
+
+
+def _require_enough_rows(n: int, what: str) -> None:
+    need = SARIMA_TEST_SIZE + ANN_TIME_STEP
+    if n <= need:
+        raise UnreadableFileError(
+            f"{what} is too short to run the forecast: need more than {need} daily "
+            f"records, got {n}."
+        )
+
+
+def run_satellite_ann(
+    gas: str,
+    latitude: float,
+    longitude: float,
+    radius_km: float,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict:
+    """Entry point for Module A's satellite ANN forecast, for any of
+    `SUPPORTED_GASES` ("SO2", "CH4", "CO2")."""
+    if gas not in SATELLITE_ANN_TARGET_COLUMN:
+        raise ValueError(f"Unsupported gas for satellite ANN: {gas!r} (expected one of {SUPPORTED_GASES})")
+    target_col = SATELLITE_ANN_TARGET_COLUMN[gas]
+
+    merged = fetch_satellite_series(gas, latitude, longitude, radius_km, start_date, end_date)
+    _require_enough_rows(len(merged), "The requested date range")
+
+    out = _forecast(merged, target_col)
+    out["meta"] = {"source": "satellite", "gas": gas, "rows": int(len(merged))}
+    return out
+
+
+# --- user-uploaded data path -------------------------------------------------
+
+# Accepted header spellings (compared case-insensitively, whitespace/underscore
+# insensitive) -> canonical column the pipeline uses.
+_COLUMN_ALIASES = {
+    "date": {"date", "datetime", "timestamp", "time", "day"},
+    "temperature": {"temperature", "temp", "airtemperature", "t2m"},
+    "ws": {"ws", "windspeed", "wind", "windspeedms"},
+    "pressure": {"pressure", "pres", "airpressure", "surfacepressure"},
+    "precipitation": {"precipitation", "precip", "rain", "rainfall", "tp"},
+}
+
+
+def _norm(name: object) -> str:
+    return "".join(ch for ch in str(name).lower() if ch.isalnum())
+
+
+def normalize_uploaded_frame(raw: pd.DataFrame, gas: str) -> tuple[pd.DataFrame, dict]:
+    """Turn one combined user file (date, gas reading, weather columns) into
+    the exact daily frame `_forecast` expects, plus a `meta` dict describing
+    what was done to it (so the UI can be honest about resampling/filling).
+
+    Time resolution is detected, not assumed: finer-than-daily data (e.g.
+    hourly) is averaged to daily; daily data has small gaps filled by time
+    interpolation; coarser-than-daily data (weekly/monthly) is rejected with
+    a clear message, because the SARIMA/ANN settings ported from the
+    notebook (5-day lookback, 200-day test window) are daily-specific."""
+    if gas not in SATELLITE_ANN_TARGET_COLUMN:
+        raise ValueError(f"Unsupported gas: {gas!r} (expected one of {SUPPORTED_GASES})")
+    target_col = SATELLITE_ANN_TARGET_COLUMN[gas]
+
+    # 1. map headers to canonical names
+    lookup: dict[str, str] = {}
+    for canonical, names in _COLUMN_ALIASES.items():
+        for n in names:
+            lookup[n] = canonical
+    lookup[_norm(gas)] = target_col  # e.g. "co2", "so2", "ch4"
+    renamed = {}
+    for col in raw.columns:
+        key = lookup.get(_norm(col))
+        if key and key not in renamed.values():
+            renamed[col] = key
+    df = raw.rename(columns=renamed)
+
+    required = ["date", target_col, "temperature", "ws", "pressure", "precipitation"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise UnreadableFileError(
+            f"Uploaded file is missing column(s): {missing}. Expected headers: "
+            f"date, {target_col}, temperature, ws, pressure, precipitation "
+            f"(common alternatives like 'wind_speed' or 'temp' are accepted). "
+            f"Found: {[str(c) for c in raw.columns]}"
+        )
+    df = df[required].copy()
+
+    # 2. parse + clean
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    bad_dates = int(df["date"].isna().sum())
+    df = df.dropna(subset=["date"])
+    for c in required[1:]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    if df[target_col].notna().sum() == 0:
+        raise UnreadableFileError(f"Column '{target_col}' has no numeric values.")
+    df = df.sort_values("date")
+
+    n_raw = len(df)
+    if n_raw < 10:
+        raise UnreadableFileError(f"Only {n_raw} usable rows found - need a time series of daily records.")
+
+    # 3. detect time step from the median gap between distinct timestamps
+    stamps = pd.DatetimeIndex(df["date"].drop_duplicates())
+    step = stamps.to_series().diff().dropna().median()
+    step_days = step / pd.Timedelta(days=1)
+
+    meta: dict = {
+        "source": "upload",
+        "gas": gas,
+        "rowsInFile": int(n_raw),
+        "unparseableDates": bad_dates,
+        "detectedStep": None,
+        "resampledToDaily": False,
+        "filledDays": 0,
+    }
+
+    if step_days > 1.5:
+        label = "weekly" if step_days < 10 else "monthly" if step_days < 45 else f"~{round(step_days)}-day"
+        raise UnreadableFileError(
+            f"Your data looks {label} (median gap {round(step_days, 1)} days). "
+            f"This version of the forecast needs daily or finer records - the model "
+            f"settings are daily-specific. Please upload daily (or hourly) data."
+        )
+
+    if step_days < 0.99:
+        meta["detectedStep"] = "sub-daily"
+        meta["resampledToDaily"] = True
+        daily = df.set_index("date")[required[1:]].resample("D").mean()
+    else:
+        meta["detectedStep"] = "daily"
+        daily = df.groupby(df["date"].dt.normalize())[required[1:]].mean()
+        daily = daily.reindex(pd.date_range(daily.index.min(), daily.index.max(), freq="D"))
+
+    # 4. fill small gaps (time interpolation), refuse if too many
+    missing_target = int(daily[target_col].isna().sum())
+    if missing_target / max(len(daily), 1) > 0.2:
+        raise UnreadableFileError(
+            f"{missing_target} of {len(daily)} days have no '{target_col}' reading (over 20%). "
+            f"Please fill or trim the gaps and upload again."
+        )
+    meta["filledDays"] = missing_target
+    daily = daily.interpolate(method="time", limit_direction="both")
+    daily = daily.ffill().bfill()
+    if daily.isna().any().any():
+        bad = [c for c in daily.columns if daily[c].isna().any()]
+        raise UnreadableFileError(f"Column(s) {bad} have no numeric values.")
+
+    daily.index.name = "date"
+    out = daily.reset_index()
+    meta["rows"] = int(len(out))
+    meta["startDate"] = out["date"].iloc[0].strftime("%Y-%m-%d")
+    meta["endDate"] = out["date"].iloc[-1].strftime("%Y-%m-%d")
+    return out, meta
+
+
+def run_uploaded_ann(gas: str, raw: pd.DataFrame) -> dict:
+    """Entry point for the user-upload path: same forecast as the satellite
+    path, fed from one combined uploaded file instead of a satellite fetch."""
+    merged, meta = normalize_uploaded_frame(raw, gas)
+    _require_enough_rows(len(merged), "Your file")
+    out = _forecast(merged, SATELLITE_ANN_TARGET_COLUMN[gas])
+    out["meta"] = meta
+    return out

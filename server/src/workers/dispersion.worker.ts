@@ -1,8 +1,9 @@
-import { Worker, type Job } from "bullmq";
+import { Worker, UnrecoverableError, type Job } from "bullmq";
 import { redisConnection } from "@/config/redis.js";
 import { AnalysisJob } from "@/models/AnalysisJob.model.js";
 import { DispersionResult } from "@/models/DispersionResult.model.js";
 import { runDispersionAnalysis } from "@/services/analysisServiceClient.js";
+import { JobCancelledError, withCancelWatch } from "@/services/cancel.service.js";
 import type { AnalysisJobData } from "@/queue/analysisQueue.js";
 import type { DispersionGas } from "@/types/domain.js";
 
@@ -13,9 +14,14 @@ export function startDispersionWorker() {
       const analysisJob = await AnalysisJob.findById(job.data.jobId);
       if (!analysisJob) throw new Error(`AnalysisJob ${job.data.jobId} not found`);
 
-      analysisJob.stage = "running";
-      analysisJob.startedAt = new Date();
-      await analysisJob.save();
+      if (analysisJob.stage === "cancelled") return;
+
+      // Atomic so a Stop that lands between the load above and this write isn't overwritten.
+      const started = await AnalysisJob.findOneAndUpdate(
+        { _id: analysisJob._id, stage: { $ne: "cancelled" } },
+        { stage: "running", startedAt: new Date() }
+      );
+      if (!started) return;
 
       const metFile = analysisJob.inputFiles.find((f) => f.role === "metData");
       if (!metFile) throw new Error("dispersion job has no metData input file");
@@ -27,21 +33,26 @@ export function startDispersionWorker() {
         }
       }
 
-      const output = await runDispersionAnalysis({
-        metDataPath: metFile.storedPath,
-        emissionSourcePaths,
-      });
+      let output;
+      try {
+        output = await withCancelWatch(job.data.jobId, (signal) =>
+          runDispersionAnalysis({ metDataPath: metFile.storedPath, emissionSourcePaths }, signal)
+        );
+      } catch (err) {
+        if (err instanceof JobCancelledError) throw new UnrecoverableError(err.message);
+        throw err;
+      }
 
       const resultDoc = await DispersionResult.create({
         job: analysisJob._id,
         gases: output,
       });
 
-      analysisJob.stage = "complete";
-      analysisJob.completedAt = new Date();
-      analysisJob.resultModel = "DispersionResult";
-      analysisJob.resultRef = resultDoc._id;
-      await analysisJob.save();
+      const done = await AnalysisJob.findOneAndUpdate(
+        { _id: analysisJob._id, stage: { $ne: "cancelled" } },
+        { stage: "complete", completedAt: new Date(), resultModel: "DispersionResult", resultRef: resultDoc._id }
+      );
+      if (!done) await DispersionResult.deleteOne({ _id: resultDoc._id });
     },
     // AERMOD runs are the longest job in the system (~8-10 min real
     // runtime) — lower concurrency than co2-ann since each run is heavier.
@@ -50,7 +61,7 @@ export function startDispersionWorker() {
     .on("failed", async (job, err) => {
       if (!job) return;
       console.error(`[dispersion-worker] job ${job.data.jobId} failed:`, err);
-      await AnalysisJob.findByIdAndUpdate(job.data.jobId, {
+      await AnalysisJob.findOneAndUpdate({ _id: job.data.jobId, stage: { $ne: "cancelled" } }, {
         stage: "failed",
         failureReason: err.message,
         completedAt: new Date(),

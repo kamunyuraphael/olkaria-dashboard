@@ -1,6 +1,6 @@
 import type { Gas } from "@/models/analysis.types";
 
-export type JobStage = "queued" | "running" | "complete" | "failed";
+export type JobStage = "queued" | "running" | "complete" | "failed" | "cancelled";
 export type JobModule = "co2-ann" | "dispersion";
 
 export interface JobSummary {
@@ -24,6 +24,7 @@ export interface JobCounts {
   running: number;
   complete: number;
   failed: number;
+  cancelled: number;
 }
 
 /** Filter used by the Results page; "active" = queued + running. */

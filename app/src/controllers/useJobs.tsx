@@ -14,7 +14,7 @@ interface JobsContextValue {
   refresh: () => Promise<void>;
 }
 
-const EMPTY: JobCounts = { total: 0, queued: 0, running: 0, complete: 0, failed: 0 };
+const EMPTY: JobCounts = { total: 0, queued: 0, running: 0, complete: 0, failed: 0, cancelled: 0 };
 const JobsContext = createContext<JobsContextValue | null>(null);
 
 /** The signed-in user's runs. Refreshes itself every 10s while anything is queued/running. */

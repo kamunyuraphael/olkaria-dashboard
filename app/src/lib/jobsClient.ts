@@ -31,3 +31,6 @@ export async function saveDefaultLocation(
   const res = await apiPostJson<{ user: unknown }>("/api/auth/me/location", body, "PATCH");
   return res.user;
 }
+
+export const cancelJob = (id: string) => apiPostJson<{ ok: true }>(`/api/jobs/${id}/cancel`, {});
+export const deleteFailedJobs = () => apiPostJson<{ deleted: number }>("/api/jobs?stage=failed", {}, "DELETE");

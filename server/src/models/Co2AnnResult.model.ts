@@ -18,6 +18,7 @@ const co2AnnResultSchema = new Schema(
     // How the data was obtained/prepared: source, gas, label, detected time
     // step, resampling/gap-fill counts. Free-form on purpose - the
     // analysis-service owns this shape and it can grow without a migration.
+    future: { type: new Schema({ dates: [String], values: [Number] }, { _id: false }) },
     meta: { type: Schema.Types.Mixed },
     correlations: [
       {

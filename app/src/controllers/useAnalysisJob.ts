@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { JobStatus, AnalysisQueryParams } from "@/models/analysis.types";
 import type { Co2AnnResult } from "@/models/co2ann.types";
 import type { Gas } from "@/models/analysis.types";
+import { cancelJob } from "@/lib/jobsClient";
 import { submitCo2AnnAnalysis, submitCo2AnnUpload, pollCo2AnnAnalysis } from "@/lib/co2annClient";
 
 /** What a run is fed from: satellite coordinates, or one uploaded data file. */
@@ -25,6 +26,7 @@ export function useAnalysisJob() {
   const [error, setError] = useState<string | null>(null);
 
   const lastInputRef = useRef<AnalysisInput | null>(null);
+  const jobIdRef = useRef<string | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopPolling = useCallback(() => {
@@ -42,6 +44,9 @@ export function useAnalysisJob() {
           stopPolling();
           setResult(outcome.result);
           setStatus("complete");
+        } else if (outcome.stage === "cancelled") {
+          stopPolling();
+          setStatus("cancelled");
         } else if (outcome.stage === "failed") {
           stopPolling();
           setError(outcome.error ?? "Analysis failed.");
@@ -83,6 +88,7 @@ export function useAnalysisJob() {
                   startDate: run.params.startDate,
                   endDate: run.params.endDate,
                 });
+          jobIdRef.current = jobId;
           pollTimerRef.current = setInterval(() => pollOnce(jobId), 2000);
           void pollOnce(jobId);
         } catch (err) {
@@ -94,9 +100,21 @@ export function useAnalysisJob() {
     [status, pollOnce, stopPolling]
   );
 
+  /** Stops the run on the server; the UI flips to "cancelled" right away. */
+  const cancel = useCallback(async () => {
+    const id = jobIdRef.current;
+    if (!id) return;
+    try {
+      await cancelJob(id);
+    } catch {
+      /* already finished: the next poll shows the real state */
+    }
+    void pollOnce(id);
+  }, [pollOnce]);
+
   useEffect(() => stopPolling, [stopPolling]);
 
   const isRunning = status === "queued" || status === "fetching" || status === "running";
 
-  return { status, isRunning, result, error, runAnalysis };
+  return { status, isRunning, result, error, runAnalysis, cancel };
 }

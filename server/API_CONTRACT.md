@@ -291,3 +291,12 @@ Analysis-service counterpart: `POST /co2-ann/analyze-upload` (multipart: `gas`, 
 - Admin: `GET /api/users`, `PATCH /api/users/:id` `{role?,disabled?}`, `POST /api/users/:id/reset-password` → `{temporaryPassword}`, `DELETE /api/users/:id` (hard delete incl. data). The last active admin can't be demoted, disabled or deleted.
 - `DELETE /api/jobs/:id` removes one of your own finished/failed runs and its output.
 - `POST /api/auth/login` is limited to 10 attempts / 15 min per IP + email (429).
+
+## Added: stop + bulk delete
+- `POST /api/jobs/:id/cancel` — stops a queued/running run → stage `cancelled` (`409` if already finished). The worker aborts its request to the analysis-service within ~2 s; the analysis-service may keep computing in the background but its result is discarded.
+- `DELETE /api/jobs?stage=failed` — deletes all of the caller's failed **and stopped** runs → `{deleted}`.
+- Job stage `cancelled` appears in `/api/jobs` (`counts.cancelled`) and the per-module GET endpoints (`{stage:"cancelled", error:"Stopped by you."}`).
+
+## Emailed temporary passwords (optional)
+`POST /api/auth/access-requests/:id/approve` and `POST /api/users/:id/reset-password` now also return `emailed: boolean`.
+Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` to enable; otherwise `emailed` is `false` and the admin shares the password manually.

@@ -38,13 +38,13 @@ body,
 
   --color-text-primary: #111827;
   --color-text-secondary: #374151;
-  --color-text-tertiary: #6B7280;
-  --color-text-quaternary: #9CA3AF;
+  --color-text-tertiary: #5B6370;
+  --color-text-quaternary: #69717E;
   --color-text-disabled: #C4C9D4;
 
-  --color-primary: #0E7C86;
-  --color-primary-hover: #0a6570;
-  --color-primary-active: #085a63;
+  --color-primary: #0B6B74;
+  --color-primary-hover: #095a62;
+  --color-primary-active: #07505a;
   --color-primary-subtle: #e6f4f5;
   --color-primary-subtle-hover: #d3ecee;
 
@@ -53,10 +53,10 @@ body,
   --color-danger-subtle-alt: #FEF8F6;
   --color-danger-text: #C0401A;
 
-  --color-warning: #D97706;
+  --color-warning: #B45309;
   --color-warning-subtle: #FFFBEB;
 
-  --color-success: #059669;
+  --color-success: #047857;
   --color-success-subtle: #ECFDF5;
 
   --color-toggle-off: #D1D5DB;
@@ -73,8 +73,8 @@ body,
 
   --color-text-primary: #F3F4F6;
   --color-text-secondary: #D1D5DB;
-  --color-text-tertiary: #9199A3;
-  --color-text-quaternary: #6B7580;
+  --color-text-tertiary: #A3AAB4;
+  --color-text-quaternary: #8B939E;
   --color-text-disabled: #4B555C;
 
   --color-primary: #22A6B3;
@@ -133,4 +133,12 @@ body {
   .no-print, header, nav, button { display: none !important; }
   html, body, #root, .print-reset { height: auto !important; overflow: visible !important; }
   .print-reset { display: block !important; }
+}
+
+
+/* Keyboard users get a clear focus ring everywhere. */
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+input:focus-visible, select:focus-visible { outline-offset: 0; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

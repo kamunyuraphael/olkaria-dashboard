@@ -12,11 +12,11 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from src.satellite_ann.pipeline import SUPPORTED_GASES, run_satellite_ann
+from src.satellite_ann.pipeline import SUPPORTED_GASES, run_satellite_ann, run_uploaded_ann
 from src.dispersion.met import preprocess_met
 from src.dispersion.pipeline import run_ch4, run_co2, run_h2s
 from src.dispersion.receptors import build_main_grid
@@ -35,7 +35,7 @@ _SERVICE_TOKEN = os.environ.get("ANALYSIS_SERVICE_TOKEN")
 
 @app.middleware("http")
 async def require_service_token(request: Request, call_next):
-    if _SERVICE_TOKEN and request.url.path not in ("/health", "/"):
+    if _SERVICE_TOKEN and request.url.path.startswith(("/co2-ann", "/dispersion")):
         if request.headers.get("x-service-token") != _SERVICE_TOKEN:
             return JSONResponse({"detail": "Invalid or missing service token."}, status_code=401)
     return await call_next(request)
@@ -147,6 +147,30 @@ def dispersion_analyze_upload(
     except Exception as exc:  # noqa: BLE001
         logger.exception("dispersion analysis failed")
         raise HTTPException(status_code=500, detail=f"dispersion analysis failed: {exc}") from exc
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@app.post("/co2-ann/analyze-upload")
+def co2_ann_analyze_upload(gas: str = Form(...), data: UploadFile = File(...)):
+    """Same forecast as /co2-ann/analyze, but fed from one combined
+    user-uploaded file (date, gas reading, weather columns) instead of a
+    satellite fetch. Validation problems come back as 422 with a readable
+    message, which the server surfaces as the job's failure reason."""
+    if gas not in SUPPORTED_GASES:
+        raise HTTPException(status_code=422, detail=f"gas must be one of {list(SUPPORTED_GASES)}")
+    tmp = Path(tempfile.mkdtemp(prefix="annupload-"))
+    try:
+        suffix = Path(data.filename or "").suffix or ".csv"
+        dest = tmp / f"data{suffix}"
+        with dest.open("wb") as fh:
+            shutil.copyfileobj(data.file, fh)
+        return run_uploaded_ann(gas, load_tabular(dest))
+    except UnreadableFileError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("uploaded ANN analysis failed")
+        raise HTTPException(status_code=500, detail=f"analysis failed: {exc}") from exc
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

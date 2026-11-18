@@ -49,7 +49,7 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
     setSourceFile(csvFile(`sample-${gas}-sources.csv`, sampleSourcesCsv(gas)));
   };
 
-  const { status, result, error, run, reset, startedAt, isRunning } = useUploadAnalysis(
+  const { status, result, error, run, cancel, reset, startedAt, isRunning } = useUploadAnalysis(
     {
       submit: () => submitDispersionAnalysis({ metData: metData!, emissionSources: { [gas as DispersionGas]: sourceFile! } }),
       poll: pollDispersionAnalysis,
@@ -81,7 +81,7 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
         actions={
           !isRunning && (
             <button onClick={backToUpload} className={outlineBtn}>
-              New upload
+              ← New upload
             </button>
           )
         }
@@ -95,12 +95,36 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
               {status === "queued" ? "Queued…" : "Running dispersion model…"}
             </h3>
             <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed max-w-md mx-auto">
-              {elapsed} elapsed, this usually takes 8–10 minutes. You can leave this page; the run continues and is
+              {elapsed} elapsed — this usually takes 8–10 minutes. You can leave this page; the run continues and is
               saved in Results when it finishes.
             </p>
-            <button onClick={() => onOpenResults("active")} className={`${outlineBtn} mt-5`}>
-              View in Results
-            </button>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <button onClick={() => onOpenResults("active")} className={outlineBtn}>
+                View in Results
+              </button>
+              <button onClick={() => void cancel()} className={`${outlineBtn} !border-[var(--color-danger)] !text-[var(--color-danger)]`}>
+                Stop analysis
+              </button>
+            </div>
+          </Card>
+        )}
+
+        {status === "cancelled" && (
+          <Card className="p-8 text-center">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Analysis stopped</h3>
+            <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] max-w-md mx-auto">
+              You stopped this run. Nothing was saved.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {canRun && (
+                <button onClick={start} className={primaryBtn}>
+                  Run again
+                </button>
+              )}
+              <button onClick={backToUpload} className={outlineBtn}>
+                Change files
+              </button>
+            </div>
           </Card>
         )}
 
@@ -125,7 +149,7 @@ export function DispersionView({ onOpenResults }: { onOpenResults: (f: JobFilter
         {status === "complete" && result && (
           <>
             <p className="text-xs text-[var(--color-text-quaternary)]">
-              Saved to <button onClick={() => onOpenResults("complete")} className="text-[var(--color-primary)] hover:underline cursor-pointer">Results</button>, you can reopen it any time.
+              Saved to <button onClick={() => onOpenResults("complete")} className="text-[var(--color-primary)] hover:underline cursor-pointer">Results</button> — you can reopen it any time.
             </p>
             <DispersionResults result={result} />
           </>

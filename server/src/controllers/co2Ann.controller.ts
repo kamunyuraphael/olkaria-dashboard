@@ -84,9 +84,13 @@ export async function getCo2AnnJob(req: AuthedRequest, res: Response) {
       stage: "complete",
       startedAt: analysisJob.startedAt?.getTime(),
       result: result
-        ? { timeSeries: result.timeSeries, correlations: result.correlations, meta: result.meta }
+        ? { timeSeries: result.timeSeries, correlations: result.correlations, future: result.future ?? undefined, meta: result.meta }
         : undefined,
     });
+  }
+
+  if (analysisJob.stage === "cancelled") {
+    return res.json({ stage: "cancelled", error: "Stopped by you." });
   }
 
   if (analysisJob.stage === "failed") {

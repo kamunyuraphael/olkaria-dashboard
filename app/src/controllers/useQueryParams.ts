@@ -21,19 +21,30 @@ function writePrefs(p: { gas?: Gas; radiusKm?: number }) {
   }
 }
 
-export function useQueryParams() {
+export interface AnnPrefill {
+  source: "satellite" | "upload";
+  gas: Gas;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
+  startDate?: string;
+  endDate?: string;
+  label?: string;
+}
+
+export function useQueryParams(prefill?: AnnPrefill | null) {
   const { user } = useAuth();
   const home = user?.defaultLocation ?? null;
 
-  const [lat, setLat] = useState(home?.latitude ?? FALLBACK.latitude);
-  const [lng, setLng] = useState(home?.longitude ?? FALLBACK.longitude);
+  const [lat, setLat] = useState(prefill?.lat ?? home?.latitude ?? FALLBACK.latitude);
+  const [lng, setLng] = useState(prefill?.lng ?? home?.longitude ?? FALLBACK.longitude);
   const saved = readPrefs();
-  const [radiusKm, setRadiusKmRaw] = useState(saved.radiusKm ?? 10);
-  const [gas, setGasRaw] = useState<Gas>(saved.gas ?? "CH4");
+  const [radiusKm, setRadiusKmRaw] = useState(prefill?.radiusKm ?? saved.radiusKm ?? 10);
+  const [gas, setGasRaw] = useState<Gas>(prefill?.gas ?? saved.gas ?? "CH4");
   const setRadiusKm = useCallback((v: number) => { setRadiusKmRaw(v); writePrefs({ radiusKm: v }); }, []);
   const setGas = useCallback((g: Gas) => { setGasRaw(g); writePrefs({ gas: g }); }, []);
-  const [startDate, setStartDate] = useState("2024-01-01");
-  const [endDate, setEndDate] = useState("2024-12-31");
+  const [startDate, setStartDate] = useState(prefill?.startDate ?? "2024-01-01");
+  const [endDate, setEndDate] = useState(prefill?.endDate ?? "2024-12-31");
 
   const setCoords = useCallback((newLat: number, newLng: number) => {
     setLat(newLat);

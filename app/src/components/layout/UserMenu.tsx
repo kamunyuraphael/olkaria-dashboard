@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/controllers/useAuth";
 
-export function UserMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function UserMenu({ onOpenSettings, onOpenHelp }: { onOpenSettings: () => void; onOpenHelp: () => void }) {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -27,6 +27,8 @@ export function UserMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-label="Account menu"
+        aria-expanded={open}
         className="w-8 h-8 rounded-full bg-[var(--color-primary-subtle)] text-[var(--color-primary)] text-xs font-semibold flex items-center justify-center hover:bg-[var(--color-primary-subtle-hover)] transition-colors cursor-pointer"
       >
         {initials}
@@ -47,6 +49,15 @@ export function UserMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
             className="w-full text-left px-4 py-2.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] transition-colors cursor-pointer"
           >
             Settings
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onOpenHelp();
+            }}
+            className="w-full text-left px-4 py-2.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] transition-colors cursor-pointer"
+          >
+            Help &amp; FAQ
           </button>
           <button
             onClick={logout}

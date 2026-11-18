@@ -1,3 +1,4 @@
+import { sendTemporaryPassword } from "../services/mail.service.js";
 import type { Response } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
@@ -64,7 +65,8 @@ export async function resetUserPassword(req: AuthedRequest, res: Response) {
   user.passwordHash = await bcrypt.hash(temporaryPassword, 12);
   user.mustChangePassword = true;
   await user.save();
-  return res.json({ temporaryPassword });
+  const emailed = await sendTemporaryPassword(user.email, user.name, temporaryPassword, "reset");
+  return res.json({ temporaryPassword, emailed });
 }
 
 // DELETE /api/users/:id  (admin) — hard delete incl. runs, results and files.

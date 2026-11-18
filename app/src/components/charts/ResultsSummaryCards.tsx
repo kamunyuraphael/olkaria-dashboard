@@ -69,9 +69,11 @@ export function ModelMetricsCard({
           <MetricRow label={unit ? `RMSE (${unit})` : "RMSE"} value={fmt(m.rmse)} />
           <MetricRow label={unit ? `MAE (${unit})` : "MAE"} value={fmt(m.mae)} />
           <MetricRow label="R²" value={m.r2.toFixed(2)} />
+          {m.mape !== null && <MetricRow label="MAPE" value={`${m.mape.toFixed(1)}%`} />}
+          <MetricRow label={unit ? `Bias (${unit})` : "Bias"} value={`${m.bias > 0 ? "+" : ""}${fmt(m.bias)}`} />
           <details className="mt-3 text-xs text-[var(--color-text-tertiary)] leading-relaxed no-print">
             <summary className="cursor-pointer text-[var(--color-text-secondary)] font-medium">What do these numbers mean?</summary>
-            <p className="mt-1.5"><strong>RMSE</strong> and <strong>MAE</strong> are the typical size of the forecast's error, in the same unit as the gas — smaller is better. <strong>R²</strong> is how much of the real ups and downs the model captured: 1.0 is perfect, 0 means no better than guessing the average.</p>
+            <p className="mt-1.5"><strong>RMSE</strong> and <strong>MAE</strong> are the typical size of the forecast's error, in the same unit as the gas — smaller is better. <strong>R²</strong> is how much of the real ups and downs the model captured: 1.0 is perfect, 0 means no better than guessing the average. <strong>MAPE</strong> is the average error as a percentage of the real value. <strong>Bias</strong> shows whether the model tends to over-predict (+) or under-predict (−).</p>
           </details>
           {audience === "policy" && (
             <div className="mt-4 p-3 bg-[var(--color-primary-subtle)] rounded-lg border border-[var(--color-primary)]/20">

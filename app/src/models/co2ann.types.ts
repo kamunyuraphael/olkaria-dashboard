@@ -18,6 +18,8 @@ export interface Co2AnnResult {
     feature: string;
     r: number;
   }[];
+  /** One-year-ahead ANN forecast (daily). Absent on older results. */
+  future?: { dates: string[]; values: number[] };
   // Provenance + data-prep notes from the analysis-service. Absent on
   // results saved before uploads existed (those were all satellite runs).
   meta?: Co2AnnMeta;

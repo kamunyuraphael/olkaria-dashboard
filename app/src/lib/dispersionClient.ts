@@ -12,7 +12,7 @@ interface SubmitResponse {
 }
 
 interface JobResponse {
-  stage: "queued" | "running" | "complete" | "failed";
+  stage: "queued" | "running" | "complete" | "failed" | "cancelled";
   startedAt?: number;
   result?: DispersionResult[];
   error?: string;

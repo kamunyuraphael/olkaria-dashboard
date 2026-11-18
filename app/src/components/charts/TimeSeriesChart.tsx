@@ -60,7 +60,7 @@ function Chart({ ts, unit }: { ts: Co2AnnResult["timeSeries"]; unit?: string }) 
           {ts.dates[i]}
         </text>
       ))}
-      <path d={buildPath(ts.sarima, x, y)} fill="none" stroke="var(--color-warning)" strokeWidth="1.5" strokeLinejoin="round" opacity="0.9" />
+      <path d={buildPath(ts.sarima, x, y)} fill="none" stroke="var(--color-warning)" strokeWidth="1.8" strokeDasharray="1 3" strokeLinecap="round" strokeLinejoin="round" />
       <path d={buildPath(ts.actual, x, y)} fill="none" stroke="var(--color-text-tertiary)" strokeWidth="1.5" strokeDasharray="4 3" strokeLinejoin="round" />
       <path d={buildPath(ts.ann, x, y)} fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeLinejoin="round" />
       {unit && (
@@ -80,7 +80,7 @@ export function TimeSeriesChart({
   onExport?: () => void;
 }) {
   return (
-    <Card className="p-5 shrink-0">
+    <Card className="p-4 sm:p-5 shrink-0">
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Actual vs. Predicted Concentration</h3>
         <div className="flex items-center gap-4">
@@ -90,7 +90,7 @@ export function TimeSeriesChart({
               ANN (LSTM-GRU)
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-5 h-0.5 bg-[var(--color-warning)] rounded" />
+              <span className="w-5 h-0 border-t-2 border-dotted border-[var(--color-warning)]" />
               SARIMA
             </span>
             <span className="flex items-center gap-1.5">
@@ -103,13 +103,15 @@ export function TimeSeriesChart({
               onClick={onExport}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-medium hover:bg-[var(--color-primary-subtle)] transition-colors cursor-pointer"
             >
-              Export
+              Save image
             </button>
           )}
         </div>
       </div>
       {data && data.dates.length > 0 ? (
-        <Chart ts={data} unit={unit} />
+        <div data-chart>
+          <Chart ts={data} unit={unit} />
+        </div>
       ) : (
         <PlaceholderBox label="No time series returned" height="h-56" />
       )}

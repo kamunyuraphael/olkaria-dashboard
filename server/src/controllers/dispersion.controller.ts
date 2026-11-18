@@ -58,6 +58,10 @@ export async function getDispersionJob(req: AuthedRequest, res: Response) {
     });
   }
 
+  if (analysisJob.stage === "cancelled") {
+    return res.json({ stage: "cancelled", error: "Stopped by you." });
+  }
+
   if (analysisJob.stage === "failed") {
     return res.json({
       stage: "failed",

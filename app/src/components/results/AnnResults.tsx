@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { downloadSvgAsPng } from "@/lib/exportSvg";
+import { FutureForecastCard } from "@/components/charts/FutureForecastCard";
 import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
 import { CorrelationHeatmapCard, ModelMetricsCard, DetectionFloorBanner } from "@/components/charts/ResultsSummaryCards";
 import { annMetrics, fmt } from "@/lib/forecastMetrics";
@@ -49,6 +51,7 @@ export function AnnResults({ result, gas, source }: { result: Co2AnnResult; gas:
   // Uploaded files carry whatever units the user's instrument used, so don't claim one.
   const unit = source === "upload" ? undefined : GAS_UNIT[gas];
   const notes = dataPrepNotes(result.meta);
+  const wrap = useRef<HTMLDivElement>(null);
   const m = annMetrics(result.timeSeries);
   const ts = result.timeSeries;
   const summary = m
@@ -80,7 +83,17 @@ export function AnnResults({ result, gas, source }: { result: Co2AnnResult; gas:
           ))}
         </div>
       )}
-      <TimeSeriesChart data={result.timeSeries} unit={unit} />
+      <div ref={wrap}>
+        <TimeSeriesChart
+          data={result.timeSeries}
+          unit={unit}
+          onExport={() => {
+            const svg = wrap.current?.querySelector<SVGSVGElement>("[data-chart] svg");
+            if (svg) downloadSvgAsPng(svg, `${gas.toLowerCase()}-forecast.png`);
+          }}
+        />
+      </div>
+      {result.future && <FutureForecastCard future={result.future} unit={unit} />}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <CorrelationHeatmapCard data={result.correlations} gas={gas} />
         <ModelMetricsCard audience={audience} data={result.timeSeries} unit={unit} />

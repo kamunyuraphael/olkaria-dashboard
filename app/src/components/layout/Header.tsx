@@ -13,16 +13,19 @@ const PAGE_LABEL: Record<Page, string> = {
   library: "Results",
   settings: "Settings",
   admin: "Admin",
+  help: "Help",
 };
 
 export function Header({
   page,
   onOpenSettings,
+  onOpenHelp,
   onOpenJob,
   onSeeAll,
 }: {
   page: Page;
   onOpenSettings: () => void;
+  onOpenHelp: () => void;
   onOpenJob: (job: JobSummary) => void;
   onSeeAll: () => void;
 }) {
@@ -43,7 +46,7 @@ export function Header({
         </span>
         <Notifications onOpenJob={onOpenJob} onSeeAll={onSeeAll} />
         <ThemeToggle />
-        <UserMenu onOpenSettings={onOpenSettings} />
+        <UserMenu onOpenSettings={onOpenSettings} onOpenHelp={onOpenHelp} />
       </div>
     </header>
   );

@@ -72,7 +72,7 @@ function NavButton({
           <span className="block text-[13px] font-medium leading-tight truncate">{item.label}</span>
           <span
             className={`block text-[10.5px] leading-tight truncate mt-0.5 ${
-              isActive ? "text-[var(--color-primary)]/70" : "text-[var(--color-text-quaternary)]"
+              isActive ? "text-[var(--color-primary)]" : "text-[var(--color-text-quaternary)]"
             }`}
           >
             {item.caption}

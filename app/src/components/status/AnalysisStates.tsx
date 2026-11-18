@@ -32,7 +32,7 @@ export function RunStageTracker({ label }: { label: string }) {
   );
 }
 
-export function AnalysisRunningState({ label }: { label: string }) {
+export function AnalysisRunningState({ label, onStop }: { label: string; onStop?: () => void }) {
   return (
     <div className="flex items-center justify-center py-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
       <div className="max-w-sm text-center px-6">
@@ -44,6 +44,14 @@ export function AnalysisRunningState({ label }: { label: string }) {
         <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">
           You can leave this page — the run continues in the background and will appear in Results when it finishes.
         </p>
+        {onStop && (
+          <button
+            onClick={onStop}
+            className="mt-5 px-4 py-2 border border-[var(--color-danger)] text-[var(--color-danger)] text-sm font-medium rounded-lg hover:bg-[var(--color-danger-subtle)] transition-colors cursor-pointer"
+          >
+            Stop analysis
+          </button>
+        )}
       </div>
     </div>
   );
@@ -92,6 +100,30 @@ export function AnalysisUploadEmptyState({ requirements, onDownloadTemplate }: {
         >
           Download CSV template
         </button>
+      </div>
+    </div>
+  );
+}
+
+export function AnalysisStoppedState({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex items-center justify-center py-10 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl">
+      <div className="max-w-sm text-center px-6">
+        <div className="w-12 h-12 rounded-xl bg-[var(--color-bg)] border border-[var(--color-border)] flex items-center justify-center mx-auto mb-4">
+          <span className="w-4 h-4 rounded-sm bg-[var(--color-text-quaternary)]" />
+        </div>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Analysis stopped</h3>
+        <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">
+          You stopped this run. Nothing was saved. Adjust your inputs and run it again whenever you like.
+        </p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="mt-5 px-4 py-2 border border-[var(--color-primary)] text-[var(--color-primary)] text-sm font-medium rounded-lg hover:bg-[var(--color-primary-subtle)] transition-colors cursor-pointer"
+          >
+            Run again
+          </button>
+        )}
       </div>
     </div>
   );

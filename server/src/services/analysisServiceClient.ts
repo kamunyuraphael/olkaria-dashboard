@@ -42,25 +42,31 @@ function serviceHeaders(extra: Record<string, string> = {}): Record<string, stri
 export interface Co2AnnAnalysisOutput {
   timeSeries: { dates: string[]; actual: number[]; ann: (number | null)[]; sarima: number[] };
   correlations: { feature: string; r: number }[];
+  /** Next-year ANN forecast (absent on simulated output and older results). */
+  future?: { dates: string[]; values: number[] };
   /** Provenance + data-prep notes from the analysis-service (source, time step, gaps filled...). */
   meta?: Record<string, unknown>;
 }
 
 export type SatelliteGas = "SO2" | "CH4" | "CO2";
 
-export async function runCo2AnnAnalysis(input: {
+export async function runCo2AnnAnalysis(
+  input: {
   gas: SatelliteGas;
   latitude: number;
   longitude: number;
   radiusKm: number;
   startDate?: string;
   endDate?: string;
-}): Promise<Co2AnnAnalysisOutput> {
+},
+  signal?: AbortSignal
+): Promise<Co2AnnAnalysisOutput> {
   if (env.ANALYSIS_SERVICE_URL) {
     const res = await fetch(`${env.ANALYSIS_SERVICE_URL}/co2-ann/analyze`, {
       method: "POST",
       headers: serviceHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(input),
+      signal,
     });
     if (!res.ok) throw new Error(`analysis-service co2-ann error: ${res.status}`);
     return (await res.json()) as Co2AnnAnalysisOutput;
@@ -90,10 +96,13 @@ export async function runCo2AnnAnalysis(input: {
 }
 
 /** Same forecast as runCo2AnnAnalysis, fed from one user-uploaded combined file. */
-export async function runCo2AnnUploadAnalysis(input: {
-  gas: SatelliteGas;
-  filePath: string;
-}): Promise<Co2AnnAnalysisOutput> {
+export async function runCo2AnnUploadAnalysis(
+  input: {
+    gas: SatelliteGas;
+    filePath: string;
+  },
+  signal?: AbortSignal
+): Promise<Co2AnnAnalysisOutput> {
   if (env.ANALYSIS_SERVICE_URL) {
     const form = new FormData();
     form.append("gas", input.gas);
@@ -102,6 +111,7 @@ export async function runCo2AnnUploadAnalysis(input: {
       method: "POST",
       headers: serviceHeaders(),
       body: form,
+      signal,
     });
     if (!res.ok) {
       // 422 carries a readable validation message (missing column, monthly
@@ -134,10 +144,13 @@ export interface DispersionAnalysisOutput {
   >;
 }
 
-export async function runDispersionAnalysis(input: {
-  metDataPath: string;
-  emissionSourcePaths: Partial<Record<DispersionGas, string>>;
-}): Promise<DispersionAnalysisOutput[]> {
+export async function runDispersionAnalysis(
+  input: {
+    metDataPath: string;
+    emissionSourcePaths: Partial<Record<DispersionGas, string>>;
+  },
+  signal?: AbortSignal
+): Promise<DispersionAnalysisOutput[]> {
   if (env.ANALYSIS_SERVICE_URL) {
     // Always upload the files rather than pass server-disk paths: the
     // analysis-service may be on a different host with no shared filesystem.
@@ -153,6 +166,7 @@ export async function runDispersionAnalysis(input: {
       method: "POST",
       headers: serviceHeaders(),
       body: form,
+      signal,
     });
     if (!res.ok) {
       let detail = "";

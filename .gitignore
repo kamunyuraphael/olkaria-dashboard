@@ -9,6 +9,7 @@
 **/dist/
 **/coverage/
 *.tsbuildinfo
+**/server/src/uploads/
 
 # Python environments, bytecode, and test caches
 **/.venv/

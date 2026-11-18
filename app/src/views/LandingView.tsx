@@ -144,7 +144,7 @@ export function LandingView() {
             <p className="mt-5 text-base text-[var(--color-text-tertiary)] leading-relaxed max-w-lg">
               A focused workspace for requesting and reviewing satellite-derived SO&#8322;, CH&#8324; and CO&#8322;
               forecasts, and gas dispersion mapping for any site you study &mdash; built to show what
-              was actually measured.
+              was actually measured, not invented.
             </p>
             <div className="mt-8 flex items-center gap-3">
               <Link

@@ -11,12 +11,14 @@ function StatTile({
   value,
   tone,
   hint,
+  loading,
   onClick,
 }: {
   label: string;
   value: number;
   tone: string;
   hint: string;
+  loading: boolean;
   onClick: () => void;
 }) {
   return (
@@ -25,7 +27,7 @@ function StatTile({
       className="text-left bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-4 hover:border-[var(--color-primary)] hover:shadow-sm active:scale-[0.99] transition cursor-pointer"
     >
       <p className="text-xs font-medium text-[var(--color-text-tertiary)]">{label}</p>
-      <p className={`text-3xl font-semibold mt-1 ${tone}`}>{value}</p>
+      <p className={`text-3xl font-semibold mt-1 ${tone}`}>{loading ? <span className="inline-block h-8 w-8 rounded bg-[var(--color-border)]/60 animate-pulse align-middle" /> : value}</p>
       <p className="text-[11px] text-[var(--color-text-quaternary)] mt-1">{hint} →</p>
     </button>
   );
@@ -47,12 +49,11 @@ export function OverviewView({
   return (
     <PageShell title={first ? `Welcome, ${first}` : "Welcome"} subtitle="Start a new analysis or pick up where you left off">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTile label="Total requests" value={counts.total} tone="text-[var(--color-text-primary)]" hint="All results" onClick={() => onOpenResults("all")} />
-        <StatTile label="In progress" value={active} tone="text-[var(--color-warning)]" hint="Running now" onClick={() => onOpenResults("active")} />
-        <StatTile label="Completed" value={counts.complete} tone="text-[var(--color-success)]" hint="View outputs" onClick={() => onOpenResults("complete")} />
-        <StatTile label="Failed" value={counts.failed} tone="text-[var(--color-danger)]" hint="See why" onClick={() => onOpenResults("failed")} />
+        <StatTile label="Total requests" value={counts.total} tone="text-[var(--color-text-primary)]" hint="All results" loading={loading} onClick={() => onOpenResults("all")} />
+        <StatTile label="In progress" value={active} tone="text-[var(--color-warning)]" hint="Running now" loading={loading} onClick={() => onOpenResults("active")} />
+        <StatTile label="Completed" value={counts.complete} tone="text-[var(--color-success)]" hint="View outputs" loading={loading} onClick={() => onOpenResults("complete")} />
+        <StatTile label="Failed" value={counts.failed + counts.cancelled} tone="text-[var(--color-danger)]" hint="Failed or stopped" loading={loading} onClick={() => onOpenResults("failed")} />
       </div>
-      {loading && <p className="text-xs text-[var(--color-text-quaternary)] -mt-2">Loading your runs…</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Card className="p-4 sm:p-5 flex flex-col">

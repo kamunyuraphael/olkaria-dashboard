@@ -9,6 +9,8 @@ import { DispersionView } from "@/views/DispersionView";
 import { ResultsLibraryView } from "@/views/ResultsLibraryView";
 import { AdminView } from "@/views/AdminView";
 import { ForcePasswordChange } from "@/components/layout/PasswordFields";
+import { HelpView } from "@/views/HelpView";
+import type { AnnPrefill } from "@/controllers/useQueryParams";
 import { SettingsView } from "@/views/SettingsView";
 import { JobsProvider, useJobs } from "@/controllers/useJobs";
 import type { Page } from "@/models/analysis.types";
@@ -33,6 +35,7 @@ function Dashboard() {
   const [collapsed, setCollapsed] = useState<boolean>(getInitialCollapsed);
   const [filter, setFilter] = useState<JobFilter>("all");
   const [selected, setSelected] = useState<JobSummary | null>(null);
+  const [prefill, setPrefill] = useState<AnnPrefill | null>(null);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -46,7 +49,22 @@ function Dashboard() {
     });
   };
 
+  const runAgain = (j: JobSummary) => {
+    setPrefill({
+      source: j.dataSource,
+      gas: j.gas ?? "CO2",
+      lat: j.coordinates?.latitude,
+      lng: j.coordinates?.longitude,
+      radiusKm: j.coordinates?.radiusKm,
+      startDate: j.coordinates?.startDate,
+      endDate: j.coordinates?.endDate,
+      label: j.label,
+    });
+    setPage("analysis");
+  };
+
   const navigate = (p: Page) => {
+    setPrefill(null);
     if (p === "library") setSelected(null);
     setPage(p);
     void refresh();
@@ -63,7 +81,7 @@ function Dashboard() {
 
   return (
     <div className="print-reset h-full bg-[var(--color-bg)] font-sans flex flex-col overflow-hidden">
-      <Header page={page} onOpenSettings={() => setPage("settings")} onOpenJob={openJob} onSeeAll={() => openResults("all")} />
+      <Header page={page} onOpenSettings={() => setPage("settings")} onOpenHelp={() => setPage("help")} onOpenJob={openJob} onSeeAll={() => openResults("all")} />
 
       <div className="print-reset flex flex-1 overflow-hidden min-h-0">
         <NavRail page={page} onNavigate={navigate} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
@@ -72,7 +90,7 @@ function Dashboard() {
           <RunBanner onOpenJob={openJob} onOpenResults={() => openResults("active")} />
           {page === "overview" && <OverviewView onNavigate={navigate} onOpenResults={openResults} />}
           {page === "dispersion" && <DispersionView onOpenResults={openResults} />}
-          {page === "analysis" && <NewAnalysisView />}
+          {page === "analysis" && <NewAnalysisView prefill={prefill} />}
           {page === "library" && (
             <ResultsLibraryView
               filter={filter}
@@ -80,10 +98,12 @@ function Dashboard() {
               selected={selected}
               onSelect={setSelected}
               onNavigate={navigate}
+              onRunAgain={runAgain}
             />
           )}
           {page === "settings" && <SettingsView />}
           {page === "admin" && <AdminView />}
+          {page === "help" && <HelpView onNavigate={navigate} />}
         </main>
       </div>
 

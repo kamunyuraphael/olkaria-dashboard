@@ -21,13 +21,16 @@ function errText(e: unknown) {
 }
 
 /** Shows a one-time temporary password the admin must hand to the person. */
-function PasswordReveal({ who, password, onClose }: { who: string; password: string; onClose: () => void }) {
+function PasswordReveal({ who, password, emailed, onClose }: { who: string; password: string; emailed?: boolean; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   return (
     <ConfirmDialog title="Temporary password" confirmLabel="Done" onConfirm={onClose} onCancel={onClose}>
       <p>
         Give this to <strong>{who}</strong> through a private channel. It is shown only once, and they will be asked to
         choose their own password at first sign-in.
+      </p>
+      <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
+        {emailed ? "It was also emailed to them." : "Email isn't set up, so it was not emailed — share it yourself."}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <code className="flex-1 px-3 py-2 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] font-mono text-sm text-[var(--color-text-primary)] break-all">
@@ -52,7 +55,7 @@ export function AdminView() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [requests, setRequests] = useState<AccessRequestRow[]>([]);
   const [pending, setPending] = useState<Pending | null>(null);
-  const [reveal, setReveal] = useState<{ who: string; password: string } | null>(null);
+  const [reveal, setReveal] = useState<{ who: string; password: string; emailed?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,8 +90,8 @@ export function AdminView() {
 
   const approve = (r: AccessRequestRow) =>
     run(async () => {
-      const { temporaryPassword } = await approveAccessRequest(r.id);
-      setReveal({ who: r.name, password: temporaryPassword });
+      const { temporaryPassword, emailed } = await approveAccessRequest(r.id);
+      setReveal({ who: r.name, password: temporaryPassword, emailed });
     });
 
   const confirm = () => {
@@ -96,8 +99,8 @@ export function AdminView() {
     if (pending.kind === "delete") return run(async () => void (await deleteUser(pending.user.id)));
     if (pending.kind === "reject") return run(async () => void (await rejectAccessRequest(pending.req.id)));
     return run(async () => {
-      const { temporaryPassword } = await resetUserPassword(pending.user.id);
-      setReveal({ who: pending.user.name, password: temporaryPassword });
+      const { temporaryPassword, emailed } = await resetUserPassword(pending.user.id);
+      setReveal({ who: pending.user.name, password: temporaryPassword, emailed });
     });
   };
 
@@ -233,7 +236,7 @@ export function AdminView() {
           {pending.req.name} ({pending.req.email}) will not get an account.
         </ConfirmDialog>
       )}
-      {reveal && <PasswordReveal who={reveal.who} password={reveal.password} onClose={() => setReveal(null)} />}
+      {reveal && <PasswordReveal who={reveal.who} password={reveal.password} emailed={reveal.emailed} onClose={() => setReveal(null)} />}
     </PageShell>
   );
 }

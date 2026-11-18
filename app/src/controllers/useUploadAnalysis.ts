@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { cancelJob } from "@/lib/jobsClient";
 
-export type UploadJobStatus = "idle" | "queued" | "running" | "complete" | "failed";
+export type UploadJobStatus = "idle" | "queued" | "running" | "complete" | "failed" | "cancelled";
 
 export interface JobPollResult<TResult> {
-  stage: "queued" | "running" | "complete" | "failed";
+  stage: "queued" | "running" | "complete" | "failed" | "cancelled";
   /** Epoch ms the job actually started, per the server. Used for the elapsed-time
    * display so it stays correct across a refresh/reattach instead of resetting to 0. */
   startedAt?: number;
@@ -74,6 +75,10 @@ export function useUploadAnalysis<TResult>(fns: JobFns<TResult>, options: Option
           clearPersisted();
           setResult(outcome.result);
           setStatus("complete");
+        } else if (outcome.stage === "cancelled") {
+          stopPolling();
+          clearPersisted();
+          setStatus("cancelled");
         } else if (outcome.stage === "failed") {
           stopPolling();
           clearPersisted();
@@ -117,6 +122,18 @@ export function useUploadAnalysis<TResult>(fns: JobFns<TResult>, options: Option
     }
   }, [beginPolling]);
 
+  /** Stops the run on the server. The UI flips to "cancelled" straight away. */
+  const cancel = useCallback(async () => {
+    const id = jobIdRef.current;
+    if (!id) return;
+    try {
+      await cancelJob(id);
+    } catch {
+      /* already finished or gone: the next poll shows the real state */
+    }
+    void pollOnce(id);
+  }, [pollOnce]);
+
   const reset = useCallback(() => {
     stopPolling();
     clearPersisted();
@@ -145,6 +162,7 @@ export function useUploadAnalysis<TResult>(fns: JobFns<TResult>, options: Option
     result,
     error,
     run,
+    cancel,
     reset,
     startedAt,
     isRunning: status === "queued" || status === "running",

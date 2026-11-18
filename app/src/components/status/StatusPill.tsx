@@ -32,6 +32,14 @@ export function JobPill({ job }: { job: JobStatus }) {
       </span>
     );
   }
+  if (job === "cancelled") {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-bg)] text-[var(--color-text-tertiary)] text-xs font-semibold border border-[var(--color-border)]">
+        <span className="w-1.5 h-1.5 rounded-sm bg-[var(--color-text-quaternary)]" />
+        Stopped
+      </span>
+    );
+  }
   if (job === "complete") {
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--color-success-subtle)] text-[var(--color-success)] text-xs font-semibold">

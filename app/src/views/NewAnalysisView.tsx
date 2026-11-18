@@ -5,25 +5,25 @@ import { PageShell } from "@/components/ui/PageShell";
 import { AnnInputs, type DataSource } from "@/components/layout/AnnInputs";
 import { QuerySitePreview } from "@/components/map/QuerySitePreview";
 import { JobPill } from "@/components/status/StatusPill";
-import { AnalysisRunningState, AnalysisFailedState, AnalysisUploadEmptyState } from "@/components/status/AnalysisStates";
+import { AnalysisRunningState, AnalysisFailedState, AnalysisUploadEmptyState, AnalysisStoppedState } from "@/components/status/AnalysisStates";
 import { AnnResults } from "@/components/results/AnnResults";
-import { useQueryParams } from "@/controllers/useQueryParams";
+import { useQueryParams, type AnnPrefill } from "@/controllers/useQueryParams";
 import { useAnalysisJob } from "@/controllers/useAnalysisJob";
 import { downloadTemplate, UPLOAD_REQUIREMENTS } from "@/lib/uploadTemplate";
 
 const GAS_NAME = { SO2: "SO₂", CH4: "CH₄", CO2: "CO₂" } as const;
 
-export function NewAnalysisView() {
-  const q = useQueryParams();
+export function NewAnalysisView({ prefill }: { prefill?: AnnPrefill | null }) {
+  const q = useQueryParams(prefill);
   const job = useAnalysisJob();
   const { refresh } = useJobs();
   // Keep the header bell / banner in step with this page's run.
   useEffect(() => {
     if (job.status !== "idle") void refresh();
   }, [job.status, refresh]);
-  const [source, setSource] = useState<DataSource>("satellite");
+  const [source, setSource] = useState<DataSource>(prefill?.source ?? "satellite");
   const [file, setFile] = useState<File | null>(null);
-  const [label, setLabel] = useState("");
+  const [label, setLabel] = useState(prefill?.label ?? "");
   // The run the results on screen belong to; the inputs can change afterwards.
   const [shown, setShown] = useState<{ source: DataSource; gas: typeof q.gas }>({ source: "satellite", gas: q.gas });
 
@@ -93,7 +93,8 @@ export function NewAnalysisView() {
       {job.status === "idle" && source === "upload" && (
         <AnalysisUploadEmptyState requirements={UPLOAD_REQUIREMENTS} onDownloadTemplate={() => downloadTemplate(q.gas)} />
       )}
-      {job.isRunning && <AnalysisRunningState label={runLabel} />}
+      {job.isRunning && <AnalysisRunningState label={runLabel} onStop={job.cancel} />}
+      {job.status === "cancelled" && <AnalysisStoppedState onRetry={() => job.runAnalysis()} />}
       {job.status === "failed" && <AnalysisFailedState onRetry={() => job.runAnalysis()} message={job.error} source={shown.source} />}
       {job.status === "complete" && job.result && <AnnResults result={job.result} gas={shown.gas} source={shown.source} />}
     </PageShell>

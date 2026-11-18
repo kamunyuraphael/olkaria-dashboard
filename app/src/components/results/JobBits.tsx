@@ -39,6 +39,7 @@ const STAGE_STYLE: Record<JobStage, { bg: string; text: string; dot: string; lab
   queued: { bg: "bg-[var(--color-bg)]", text: "text-[var(--color-text-tertiary)]", dot: "bg-[var(--color-text-quaternary)]", label: "Queued" },
   running: { bg: "bg-[var(--color-warning-subtle)]", text: "text-[var(--color-warning)]", dot: "bg-[var(--color-warning)] animate-pulse", label: "Running" },
   complete: { bg: "bg-[var(--color-success-subtle)]", text: "text-[var(--color-success)]", dot: "bg-[var(--color-success)]", label: "Complete" },
+  cancelled: { bg: "bg-[var(--color-bg)]", text: "text-[var(--color-text-tertiary)]", dot: "bg-[var(--color-text-quaternary)]", label: "Stopped" },
   failed: { bg: "bg-[var(--color-danger-subtle)]", text: "text-[var(--color-danger)]", dot: "bg-[var(--color-danger)]", label: "Failed" },
 };
 

@@ -1,3 +1,4 @@
+import { sendTemporaryPassword } from "../services/mail.service.js";
 import type { Request, Response } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
@@ -218,7 +219,8 @@ export async function approveAccessRequest(req: AuthedRequest, res: Response) {
   accessRequest.approvedUserId = user._id;
   await accessRequest.save();
 
-  return res.json({ user: userJson(user), temporaryPassword });
+  const emailed = await sendTemporaryPassword(user.email, user.name, temporaryPassword, "approved");
+  return res.json({ user: userJson(user), temporaryPassword, emailed });
 }
 
 // POST /api/auth/access-requests/:id/reject  (admin only)

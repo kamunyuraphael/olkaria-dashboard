@@ -12,7 +12,7 @@ const analysisJobSchema = new Schema(
     moduleType: { type: String, enum: ["co2-ann", "dispersion"], required: true },
     stage: {
       type: String,
-      enum: ["queued", "running", "complete", "failed"],
+      enum: ["queued", "running", "complete", "failed", "cancelled"],
       default: "queued",
       required: true,
     },

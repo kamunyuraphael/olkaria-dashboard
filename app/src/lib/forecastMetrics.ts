@@ -4,15 +4,19 @@ export interface ForecastMetrics {
   rmse: number;
   mae: number;
   r2: number;
+  /** Mean absolute % error; null when observed values include zeros. */
+  mape: number | null;
+  /** Mean signed error (forecast − observed): >0 over-predicts. */
+  bias: number;
   n: number;
 }
 
 /** RMSE / MAE / R² of the ANN series against observed, skipping the null
  * gaps the analysis-service leaves where the ANN's test split ran short. */
-export function annMetrics(ts: Co2AnnResult["timeSeries"]): ForecastMetrics | null {
+export function annMetrics(ts: Co2AnnResult["timeSeries"], model: "ann" | "sarima" = "ann"): ForecastMetrics | null {
   const pairs: [number, number][] = [];
   ts.actual.forEach((a, i) => {
-    const p = ts.ann[i];
+    const p = ts[model][i];
     if (p !== null && p !== undefined && Number.isFinite(a) && Number.isFinite(p)) pairs.push([a, p]);
   });
   if (pairs.length < 2) return null;
@@ -27,6 +31,8 @@ export function annMetrics(ts: Co2AnnResult["timeSeries"]): ForecastMetrics | nu
     rmse: Math.sqrt(sse / n),
     mae: sae / n,
     r2: sst === 0 ? 0 : 1 - sse / sst,
+    mape: pairs.some(([a]) => a === 0) ? null : (pairs.reduce((s, [a, p]) => s + Math.abs((a - p) / a), 0) / n) * 100,
+    bias: pairs.reduce((s, [a, p]) => s + (p - a), 0) / n,
     n,
   };
 }
