@@ -33,7 +33,7 @@ export function RunBanner({ onOpenJob, onOpenResults }: { onOpenJob: (j: JobSumm
     <div className="no-print shrink-0 px-3 sm:px-6 py-2 flex items-center gap-3 text-sm bg-[var(--color-warning-subtle)] text-[var(--color-warning)]">
       <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
       <span className="flex-1 min-w-0 truncate">
-        {active} run{active === 1 ? "" : "s"} in progress — you can keep working
+        {active} run{active === 1 ? "" : "s"} in progress. You can keep working
       </span>
       {perm === "default" && (
         <button

@@ -26,7 +26,7 @@ export async function sendTemporaryPassword(
       from: env.MAIL_FROM || env.SMTP_USER,
       to,
       subject: `${env.APP_NAME}: your temporary password`,
-      text: `Hi ${name},\n\n${intro}\n\nTemporary password: ${temporaryPassword}\n\nSign in at ${env.CLIENT_ORIGIN} — you will be asked to choose a new password straight away.\n`,
+      text: `Hi ${name},\n\n${intro}\n\nTemporary password: ${temporaryPassword}\n\nSign in at ${env.CLIENT_ORIGIN}. You will be asked to choose a new password straight away.\n`,
     });
     return true;
   } catch (e) {

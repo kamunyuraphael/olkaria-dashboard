@@ -68,7 +68,7 @@ export function OverviewView({
         <Card className="p-4 sm:p-5 flex flex-col">
           <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">ANN forecast</h3>
           <p className="text-sm text-[var(--color-text-tertiary)] mt-1 mb-4 leading-relaxed">
-            Forecast SO₂, CH₄ or CO₂ from satellite data for any coordinates, or from a file of your own readings.
+            Upload a file of your daily readings and forecast CO₂ with the ANN, compared against a SARIMA baseline.
           </p>
           <button onClick={() => onNavigate("analysis")} className={`${primaryBtn} mt-auto self-start`}>
             Start ANN run
@@ -83,7 +83,7 @@ export function OverviewView({
             <p className="text-xs text-[var(--color-text-quaternary)] mt-0.5 truncate">
               {home
                 ? `${home.label ? home.label + " · " : ""}${home.latitude.toFixed(4)}°, ${home.longitude.toFixed(4)}°`
-                : "Not set — new ANN runs start from a generic point"}
+                : "Not set. New ANN runs start from a generic point"}
             </p>
           </div>
           <button onClick={() => onNavigate("settings")} className={`${outlineBtn} shrink-0 !py-1.5`}>

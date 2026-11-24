@@ -22,7 +22,7 @@ interface JobResponse {
  * Submits met data + per-gas emission-source files and starts the real
  * dispersion run (server/API_CONTRACT.md: POST /api/dispersion/analyze,
  * multipart). Real runtime confirmed by the analysis team at ~8-10
- * minutes — the longest-running job in the system — so this is a real
+ * minutes - the longest-running job in the system - so this is a real
  * job (see useUploadAnalysis's sessionStorage persistence), not a plain
  * request/response.
  */

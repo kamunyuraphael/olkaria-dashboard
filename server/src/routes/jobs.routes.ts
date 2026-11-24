@@ -4,7 +4,7 @@ import { listMyJobs, deleteMyJob, deleteMyFailedJobs, cancelMyJob } from "@/cont
 
 export const jobsRouter = Router();
 
-// GET /api/jobs?stage=&module=&limit= — the signed-in user's own runs.
+// GET /api/jobs?stage=&module=&limit= - the signed-in user's own runs.
 jobsRouter.get("/", requireAuth, listMyJobs);
 jobsRouter.delete("/", requireAuth, deleteMyFailedJobs);
 jobsRouter.post("/:id/cancel", requireAuth, cancelMyJob);

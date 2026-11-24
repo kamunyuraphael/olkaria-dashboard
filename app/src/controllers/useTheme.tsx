@@ -28,7 +28,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     try {
       window.localStorage.setItem(STORAGE_KEY, theme);
     } catch {
-      // localStorage unavailable (private browsing, etc.) — theme just won't persist
+      // localStorage unavailable (private browsing, etc.) - theme just won't persist
     }
   }, [theme]);
 

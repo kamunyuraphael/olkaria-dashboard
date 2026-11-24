@@ -70,7 +70,7 @@ export function ForcePasswordChange() {
       <div className="w-full sm:max-w-md bg-[var(--color-surface)] rounded-t-2xl sm:rounded-2xl border border-[var(--color-border)] p-5 sm:p-6 max-h-[92vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Choose your own password</h2>
         <p className="text-sm text-[var(--color-text-tertiary)] mt-1 mb-4 leading-relaxed">
-          You signed in with a temporary password. Set a new one to continue — enter the temporary password as the current one.
+          You signed in with a temporary password. Set a new one to continue. Enter the temporary password as the current one.
         </p>
         <PasswordForm submitLabel="Save and continue" />
       </div>

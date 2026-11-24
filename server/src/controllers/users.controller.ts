@@ -69,7 +69,7 @@ export async function resetUserPassword(req: AuthedRequest, res: Response) {
   return res.json({ temporaryPassword, emailed });
 }
 
-// DELETE /api/users/:id  (admin) — hard delete incl. runs, results and files.
+// DELETE /api/users/:id  (admin) - hard delete incl. runs, results and files.
 export async function deleteUser(req: AuthedRequest, res: Response) {
   const user = await User.findById(req.params.id);
   if (!user) return res.status(404).json({ error: "User not found." });

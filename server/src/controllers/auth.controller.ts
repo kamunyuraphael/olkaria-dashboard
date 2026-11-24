@@ -142,7 +142,7 @@ export async function changePassword(req: AuthedRequest, res: Response) {
   return res.json({ user: userJson(user) });
 }
 
-// DELETE /api/auth/me  { password } — removes the account and all of its runs.
+// DELETE /api/auth/me  { password } - removes the account and all of its runs.
 export async function deleteMyAccount(req: AuthedRequest, res: Response) {
   const { password } = req.body ?? {};
   const user = await User.findById(req.userId);

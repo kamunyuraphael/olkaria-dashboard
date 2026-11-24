@@ -30,7 +30,7 @@ function PasswordReveal({ who, password, emailed, onClose }: { who: string; pass
         choose their own password at first sign-in.
       </p>
       <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
-        {emailed ? "It was also emailed to them." : "Email isn't set up, so it was not emailed — share it yourself."}
+        {emailed ? "It was also emailed to them." : "Email isn't set up, so it was not emailed. Share it yourself."}
       </p>
       <div className="mt-3 flex items-center gap-2">
         <code className="flex-1 px-3 py-2 rounded-lg bg-[var(--color-bg)] border border-[var(--color-border)] font-mono text-sm text-[var(--color-text-primary)] break-all">

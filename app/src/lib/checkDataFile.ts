@@ -57,14 +57,14 @@ export async function checkAnnFile(file: File, gas: Gas): Promise<FileCheck | nu
     const other = (["co2", "ch4", "so2"] as const).filter((g) => g !== wantGas && have.has(g));
     errors.push(
       other.length
-        ? `No “${wantGas}” column — this file looks like ${other[0].toUpperCase()} data. Change the gas above or fix the header.`
+        ? `No “${wantGas}” column. This file looks like ${other[0].toUpperCase()} data. Change the gas above or fix the header.`
         : `No “${wantGas}” column found for the gas you selected.`
     );
   }
   for (const k of ["temperature", "ws", "pressure", "precipitation"]) {
     if (!find(ANN_ALIASES[k])) errors.push(`Missing weather column “${k}”.`);
   }
-  if (!truncated && rows < 205) errors.push(`Only ${rows} rows — at least 205 daily records are needed.`);
+  if (!truncated && rows < 205) errors.push(`Only ${rows} rows. At least 205 daily records are needed.`);
   else if (!truncated && rows < 400) warnings.push(`${rows} rows is on the short side; more history gives a steadier forecast.`);
 
   return { errors, warnings, summary: errors.length ? undefined : `${truncated ? "400k+ bytes" : rows + " rows"} · ${header.length} columns · looks good` };
@@ -83,7 +83,7 @@ export async function checkMetFile(file: File): Promise<FileCheck | null> {
   const { header, rows } = await readHead(file);
   const errors = checkExact(header, MET_COLS, "Met data");
   const warnings: string[] = [];
-  if (!errors.length && rows < 24) warnings.push("Fewer than 24 hourly rows — results will be thin.");
+  if (!errors.length && rows < 24) warnings.push("Fewer than 24 hourly rows. Results will be thin.");
   return { errors, warnings, summary: errors.length ? undefined : `${rows} hourly rows · looks good` };
 }
 

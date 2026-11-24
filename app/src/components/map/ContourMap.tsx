@@ -134,7 +134,7 @@ export function ContourMap({
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         {
-          attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics",
+          attribution: "Tiles © Esri. Source: Esri, Maxar, Earthstar Geographics",
           maxZoom: 18,
         }
       ).addTo(map);

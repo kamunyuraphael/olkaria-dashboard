@@ -10,7 +10,7 @@ const STAGES = ["queued", "running", "complete", "failed", "cancelled"] as const
 const MODULES = ["co2-ann", "dispersion"] as const;
 
 // GET /api/jobs
-// Light summaries only (no result payloads) — open a run through its
+// Light summaries only (no result payloads) - open a run through its
 // module's GET /jobs/:id to load the stored output.
 export async function listMyJobs(req: AuthedRequest, res: Response) {
   const stage = typeof req.query.stage === "string" ? req.query.stage : undefined;
@@ -65,7 +65,7 @@ export async function listMyJobs(req: AuthedRequest, res: Response) {
   return res.json({ counts, jobs });
 }
 
-// DELETE /api/jobs/:id — remove one of your own finished/failed runs and its stored output.
+// DELETE /api/jobs/:id - remove one of your own finished/failed runs and its stored output.
 export async function deleteMyJob(req: AuthedRequest, res: Response) {
   const job = await AnalysisJob.findOne({ _id: req.params.id, requestedBy: req.userId });
   if (!job) return res.status(404).json({ error: "Run not found." });
@@ -90,7 +90,7 @@ async function removeJobData(job: InstanceType<typeof AnalysisJob>) {
   await job.deleteOne();
 }
 
-// DELETE /api/jobs?stage=failed — remove all of your failed and stopped runs at once.
+// DELETE /api/jobs?stage=failed - remove all of your failed and stopped runs at once.
 // Only "failed" is accepted so a stray call can't wipe completed results.
 export async function deleteMyFailedJobs(req: AuthedRequest, res: Response) {
   if (req.query.stage !== "failed") {
@@ -101,7 +101,7 @@ export async function deleteMyFailedJobs(req: AuthedRequest, res: Response) {
   return res.json({ deleted: jobs.length });
 }
 
-// POST /api/jobs/:id/cancel — stop a queued or running run.
+// POST /api/jobs/:id/cancel - stop a queued or running run.
 export async function cancelMyJob(req: AuthedRequest, res: Response) {
   const job = await AnalysisJob.findOneAndUpdate(
     { _id: req.params.id, requestedBy: req.userId, stage: { $in: ["queued", "running"] } },

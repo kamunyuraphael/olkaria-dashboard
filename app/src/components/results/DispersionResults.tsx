@@ -5,6 +5,7 @@ import { DiurnalChart } from "@/components/charts/DiurnalChart";
 import { DISPERSION_WINDOWS } from "@/models/dispersion.types";
 import type { DispersionGas, DispersionResult } from "@/models/dispersion.types";
 import { outlineBtn } from "@/components/ui/PageShell";
+import { AermodAbout } from "@/components/results/AermodAbout";
 import { gasLabel } from "@/components/results/JobBits";
 
 /** Contour maps + diurnal charts for a finished dispersion run (live or stored). */
@@ -48,9 +49,9 @@ export function DispersionResults({ result }: { result: DispersionResult[] }) {
           return (
             <Card key={f.window} className="p-4 sm:p-5">
               <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">
-                {label} average — spatial distribution
+                {label} average: spatial distribution
               </h3>
-              <ContourMap geojson={f.geojson} unit={f.unit} className="h-56" title={`${label} average — spatial distribution`} />
+              <ContourMap geojson={f.geojson} unit={f.unit} className="h-56" title={`${label} average: spatial distribution`} />
             </Card>
           );
         })}
@@ -69,6 +70,8 @@ export function DispersionResults({ result }: { result: DispersionResult[] }) {
           ))}
         </div>
       </Card>
+
+      <AermodAbout />
     </div>
   );
 }

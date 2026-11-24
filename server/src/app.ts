@@ -17,7 +17,7 @@ export function createApp() {
   app.get("/health", (_req, res) => res.json({ ok: true }));
   app.use("/api", apiRouter);
 
-  // Must be registered last — Express only routes to an error handler
+  // Must be registered last - Express only routes to an error handler
   // (4-arg middleware) when something upstream calls next(err).
   app.use(errorHandler);
 

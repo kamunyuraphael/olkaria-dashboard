@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { MulterError } from "multer";
 
 /**
- * Central error handler — primarily here to turn multer failures (our
+ * Central error handler - primarily here to turn multer failures (our
  * upload.middleware.ts fileFilter rejection, or its file-size limit) into
  * a clean 400 with a readable message, instead of Express's default 500 +
  * stack trace. Any other thrown error still gets a generic 500; this is

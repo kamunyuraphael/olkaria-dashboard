@@ -39,7 +39,7 @@ export function CompareView({ jobs, onBack }: { jobs: [JobSummary, JobSummary]; 
   return (
     <PageShell
       title="Compare runs"
-      subtitle="Same-gas comparisons are the most meaningful — units and ranges match"
+      subtitle="Same-gas comparisons are the most meaningful because units and ranges match"
       wide
       actions={<button onClick={onBack} className={outlineBtn}>← Back to results</button>}
     >
@@ -97,7 +97,7 @@ export function CompareView({ jobs, onBack }: { jobs: [JobSummary, JobSummary]; 
             </Card>
             {data[0].job.gas !== data[1].job.gas && (
               <p className="text-xs text-[var(--color-warning)]">
-                These runs are for different gases ({gasLabel(data[0].job.gas ?? "CO2")} vs {gasLabel(data[1].job.gas ?? "CO2")}) — compare the shape of the fit, not the values.
+                These runs are for different gases ({gasLabel(data[0].job.gas ?? "CO2")} vs {gasLabel(data[1].job.gas ?? "CO2")}). Compare the shape of the fit, not the values.
               </p>
             )}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

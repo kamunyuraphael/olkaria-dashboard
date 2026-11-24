@@ -40,7 +40,7 @@ export function useQueryParams(prefill?: AnnPrefill | null) {
   const [lng, setLng] = useState(prefill?.lng ?? home?.longitude ?? FALLBACK.longitude);
   const saved = readPrefs();
   const [radiusKm, setRadiusKmRaw] = useState(prefill?.radiusKm ?? saved.radiusKm ?? 10);
-  const [gas, setGasRaw] = useState<Gas>(prefill?.gas ?? saved.gas ?? "CH4");
+  const [gas, setGasRaw] = useState<Gas>(prefill?.gas ?? saved.gas ?? "CO2");
   const setRadiusKm = useCallback((v: number) => { setRadiusKmRaw(v); writePrefs({ radiusKm: v }); }, []);
   const setGas = useCallback((g: Gas) => { setGasRaw(g); writePrefs({ gas: g }); }, []);
   const [startDate, setStartDate] = useState(prefill?.startDate ?? "2024-01-01");

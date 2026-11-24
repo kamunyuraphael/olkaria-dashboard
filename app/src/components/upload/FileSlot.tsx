@@ -24,12 +24,12 @@ function hasAllowedExtension(fileName: string, accept: string): boolean {
 
 /**
  * One labeled upload slot (e.g. "Met Data", "CO2 Emission Sources").
- * Both upload modules (ANN, gas dispersion) are built from these —
+ * Both upload modules (ANN, gas dispersion) are built from these -
  * ANN uses one, dispersion uses two (met + one gas).
  *
  * `accept` drives the native file-picker filter AND is enforced here on
  * both click-to-browse and drag-and-drop, since the HTML `accept`
- * attribute only filters the picker dialog — it does nothing for a
+ * attribute only filters the picker dialog - it does nothing for a
  * dropped file, and nothing server-side. This is still just a client-side
  * nicety for a fast "wrong file" message; the server does its own
  * extension check, and real validation happens when the analysis-service

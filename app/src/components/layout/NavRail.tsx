@@ -15,7 +15,7 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: "Overview", caption: "Your workspace", icon: <IconOverview /> },
   { id: "dispersion", label: "Gas dispersion", caption: "Upload data, map the spread", icon: <IconDispersion /> },
-  { id: "analysis", label: "ANN", caption: "Satellite or your own data", icon: <IconAnalysis /> },
+  { id: "analysis", label: "ANN", caption: "Forecast from your data", icon: <IconAnalysis /> },
   { id: "library", label: "Results", caption: "Your saved runs", icon: <IconLibrary /> },
 ];
 

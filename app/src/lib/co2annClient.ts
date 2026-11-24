@@ -4,7 +4,7 @@ import type { JobPollResult } from "@/controllers/useUploadAnalysis";
 import { apiGet, apiPostForm, apiPostJson } from "@/lib/apiClient";
 
 // Module A's satellite ANN client. The file/route keep the historical
-// "co2ann" name, but the same endpoints now serve SO2, CH4 and CO2 — the
+// "co2ann" name, but the same endpoints now serve SO2, CH4 and CO2 - the
 // gas is just a field on the request (server/API_CONTRACT.md).
 
 export interface Co2AnnCoordinateParams {
@@ -27,14 +27,14 @@ interface JobResponse {
   error?: string;
 }
 
-/** POST /api/co2-ann/analyze — starts a real async job (~3 min) and returns its id. */
+/** POST /api/co2-ann/analyze - starts a real async job (~3 min) and returns its id. */
 export async function submitCo2AnnAnalysis(params: Co2AnnCoordinateParams): Promise<{ jobId: string }> {
   const { jobId } = await apiPostJson<SubmitResponse>("/api/co2-ann/analyze", params);
   return { jobId };
 }
 
 /**
- * POST /api/co2-ann/analyze-upload — same job/result flow as the satellite
+ * POST /api/co2-ann/analyze-upload - same job/result flow as the satellite
  * route, but the data comes from one combined file the user uploads
  * (date, the gas reading, temperature, ws, pressure, precipitation).
  */

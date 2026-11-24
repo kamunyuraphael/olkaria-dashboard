@@ -2,7 +2,7 @@ import { Queue } from "bullmq";
 import { redisConnection } from "@/config/redis.js";
 
 /**
- * One BullMQ queue per module. Job data is just the Mongo AnalysisJob id —
+ * One BullMQ queue per module. Job data is just the Mongo AnalysisJob id -
  * the worker loads everything else (input file paths, etc.) from that
  * document, so the queue payload stays tiny and the Mongo doc stays the
  * single source of truth for status.

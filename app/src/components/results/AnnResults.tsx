@@ -3,7 +3,7 @@ import { downloadSvgAsPng } from "@/lib/exportSvg";
 import { FutureForecastCard } from "@/components/charts/FutureForecastCard";
 import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
 import { CorrelationHeatmapCard, ModelMetricsCard, DetectionFloorBanner } from "@/components/charts/ResultsSummaryCards";
-import { annMetrics, fmt } from "@/lib/forecastMetrics";
+import { annMetrics, naiveMetrics, fmt } from "@/lib/forecastMetrics";
 import { downloadText } from "@/lib/sampleData";
 import { outlineBtn } from "@/components/ui/PageShell";
 import type { Audience, Gas } from "@/models/analysis.types";
@@ -37,9 +37,16 @@ function AudienceToggle({ value, onChange }: { value: Audience; onChange: (a: Au
 
 /** Plain-language notes about what was done to an uploaded file, so nothing happens silently. */
 function dataPrepNotes(meta: Co2AnnMeta | undefined): string[] {
-  if (!meta || meta.source !== "upload") return [];
+  if (!meta) return [];
   const notes: string[] = [];
+  if (meta.annEvaluation) {
+    notes.push(
+      `Both models are scored on the same last ${meta.annEvaluation.window} days. The ANN was trained on the whole file and its level is shifted to match the observed average, so its fit here is more optimistic than a true forecast of unseen days.`
+    );
+  }
+  if (meta.source !== "upload") return notes;
   if (meta.resampledToDaily) notes.push("Your records were finer than daily, so they were averaged to daily values.");
+  if (meta.dateOrder === "day-first-assumed") notes.push("Dates such as 03/04/2024 could be read two ways; they were read as day/month. If that is wrong, re-save the file with dates like 2024-04-03.");
   if (meta.filledDays) notes.push(`${meta.filledDays} day(s) had no reading and were filled by interpolation.`);
   if (meta.simulated) notes.push("Simulated output - the server has no analysis service connected.");
   return notes;
@@ -54,9 +61,18 @@ export function AnnResults({ result, gas, source }: { result: Co2AnnResult; gas:
   const wrap = useRef<HTMLDivElement>(null);
   const m = annMetrics(result.timeSeries);
   const ts = result.timeSeries;
+  const naive = naiveMetrics(ts);
+  const gasName = gas === "CO2" ? "CO₂" : gas === "CH4" ? "CH₄" : "SO₂";
+  const u = unit ? " " + unit : "";
   const summary = m
-    ? `The ANN forecast followed the observed ${gas === "CO2" ? "CO₂" : gas === "CH4" ? "CH₄" : "SO₂"} values with an average error of ${fmt(m.mae)}${unit ? " " + unit : ""} over ${m.n} days (R² ${m.r2.toFixed(2)}${m.r2 >= 0.7 ? ", a strong fit" : m.r2 >= 0.4 ? ", a moderate fit" : ", a weak fit — treat with caution"}).`
+    ? m.r2 < 0
+      ? `The ANN did not beat simply predicting the average ${gasName} (R² ${m.r2.toFixed(2)}), with an average error of ${fmt(m.mae)}${u} over ${m.n} days. Treat its day-to-day shape with caution.`
+      : `The ANN forecast followed the observed ${gasName} values with an average error of ${fmt(m.mae)}${u} over ${m.n} days (R² ${m.r2.toFixed(2)}${m.r2 >= 0.7 ? ", a strong fit" : m.r2 >= 0.4 ? ", a moderate fit" : ", a weak fit, so treat with caution"}).`
     : null;
+  const yardstick =
+    m && naive
+      ? `For reference, guessing that each day equals the day before gives an average error of ${fmt(naive.mae)}${u}${naive.rmse < m.rmse ? ", closer than the ANN" : ""}.`
+      : null;
   const exportCsv = () =>
     downloadText(
       `${gas.toLowerCase()}-forecast.csv`,
@@ -75,7 +91,7 @@ export function AnnResults({ result, gas, source }: { result: Co2AnnResult; gas:
           <AudienceToggle value={audience} onChange={setAudience} />
         </div>
       </div>
-      {summary && <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{summary}</p>}
+      {summary && <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">{summary}{yardstick ? ` ${yardstick}` : ""}</p>}
       {notes.length > 0 && (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-xs text-[var(--color-text-secondary)] leading-relaxed">
           {notes.map((n) => (

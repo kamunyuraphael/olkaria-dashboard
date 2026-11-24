@@ -10,6 +10,9 @@ import logging
 import os
 import shutil
 import tempfile
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -53,15 +56,65 @@ class Co2AnnRequest(BaseModel):
     endDate: str | None = None
 
 
+# --- background jobs ---------------------------------------------------------
+# Dispersion and ANN runs take minutes. Holding one HTTP request open that long
+# is fragile behind free-tier proxies, so callers may pass ?background=true:
+# the work starts in a thread, the request returns {"jobId"} at once, and the
+# caller polls GET /jobs/{id}. Results live in memory for an hour; if the
+# service restarts mid-run the id is unknown (404) and the caller reports that.
+_executor = ThreadPoolExecutor(max_workers=2)
+_jobs: dict[str, dict] = {}
+_JOB_TTL_SECONDS = 3600
+
+
+def _submit(fn) -> dict:
+    now = time.time()
+    for jid in [k for k, v in _jobs.items() if v.get("finished") and now - v["finished"] > _JOB_TTL_SECONDS]:
+        _jobs.pop(jid, None)
+
+    jid = uuid.uuid4().hex
+    job: dict = {"state": "running"}
+    _jobs[jid] = job
+
+    def run() -> None:
+        try:
+            job["result"] = fn()
+            job["state"] = "done"
+        except UnreadableFileError as exc:
+            job.update(state="error", status=422, detail=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("background analysis failed")
+            job.update(state="error", status=500, detail=f"analysis failed: {exc}")
+        finally:
+            job["finished"] = time.time()
+
+    _executor.submit(run)
+    return {"jobId": jid}
+
+
+@app.get("/jobs/{job_id}")
+def job_status(job_id: str):
+    job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Unknown job (the service may have restarted).")
+    if job["state"] == "done":
+        return {"state": "done", "result": job["result"]}
+    if job["state"] == "error":
+        return {"state": "error", "status": job["status"], "detail": job["detail"]}
+    return {"state": "running"}
+
+
 class DispersionRequest(BaseModel):
     metDataPath: str
     emissionSourcePaths: dict[str, str]  # keys: "CO2" | "CH4" | "H2S", any subset
 
 
 @app.post("/co2-ann/analyze")
-def co2_ann_analyze(req: Co2AnnRequest):
+def co2_ann_analyze(req: Co2AnnRequest, background: bool = False):
     if req.gas not in SUPPORTED_GASES:
         raise HTTPException(status_code=422, detail=f"Unsupported gas {req.gas!r}; expected one of {list(SUPPORTED_GASES)}.")
+    if background:
+        return _submit(lambda: run_satellite_ann(req.gas, req.latitude, req.longitude, req.radiusKm, req.startDate, req.endDate))
     try:
         return run_satellite_ann(req.gas, req.latitude, req.longitude, req.radiusKm, req.startDate, req.endDate)
     except UnreadableFileError as exc:
@@ -120,6 +173,7 @@ def dispersion_analyze_upload(
     CO2: UploadFile | None = File(None),
     CH4: UploadFile | None = File(None),
     H2S: UploadFile | None = File(None),
+    background: bool = False,
 ):
     """Remote mode: the API server and this service run on different hosts
     (no shared disk), so the files arrive as a multipart upload instead of
@@ -141,6 +195,8 @@ def dispersion_analyze_upload(
         }
         if not gas_sources:
             raise UnreadableFileError("At least one emission-source file (CO2, CH4 or H2S) is required.")
+        if background:  # files are already in memory, so the temp dir can go
+            return _submit(lambda: _run_dispersion(met_raw, gas_sources))
         return _run_dispersion(met_raw, gas_sources)
     except UnreadableFileError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -152,7 +208,7 @@ def dispersion_analyze_upload(
 
 
 @app.post("/co2-ann/analyze-upload")
-def co2_ann_analyze_upload(gas: str = Form(...), data: UploadFile = File(...)):
+def co2_ann_analyze_upload(gas: str = Form(...), data: UploadFile = File(...), background: bool = False):
     """Same forecast as /co2-ann/analyze, but fed from one combined
     user-uploaded file (date, gas reading, weather columns) instead of a
     satellite fetch. Validation problems come back as 422 with a readable
@@ -165,7 +221,10 @@ def co2_ann_analyze_upload(gas: str = Form(...), data: UploadFile = File(...)):
         dest = tmp / f"data{suffix}"
         with dest.open("wb") as fh:
             shutil.copyfileobj(data.file, fh)
-        return run_uploaded_ann(gas, load_tabular(dest))
+        frame = load_tabular(dest)
+        if background:
+            return _submit(lambda: run_uploaded_ann(gas, frame))
+        return run_uploaded_ann(gas, frame)
     except UnreadableFileError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001

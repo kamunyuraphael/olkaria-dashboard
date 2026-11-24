@@ -5,7 +5,7 @@ const GAS_LABEL: Record<Gas, string> = { SO2: "SO₂", CH4: "CH₄", CO2: "CO₂
 
 /**
  * The live map that fills the main panel while there's no analysis to show
- * yet — replaces a lone centered icon in a sea of empty space with
+ * yet - replaces a lone centered icon in a sea of empty space with
  * something that's actually useful: you can see exactly where and how
  * large your query domain is, and still click/drag to adjust it, before
  * committing to a multi-minute run.

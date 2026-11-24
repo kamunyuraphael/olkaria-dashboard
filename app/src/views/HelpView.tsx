@@ -7,11 +7,11 @@ import type { Page } from "@/models/analysis.types";
 const FAQ: { q: string; a: React.ReactNode }[] = [
   {
     q: "What's the difference between Gas dispersion and ANN?",
-    a: "Gas dispersion maps how one gas spreads through the air around known emission sources, using weather data. ANN forecasts how a gas concentration changes over time at a location, from satellite data or your own daily measurements.",
+    a: "Gas dispersion maps how one gas spreads through the air around known emission sources, using weather data. ANN forecasts how a gas concentration changes over time at a location, from your own daily measurements.",
   },
   {
     q: "How long does a run take?",
-    a: "ANN runs take a few minutes; gas dispersion takes about 8–10 minutes per gas. You can leave the page — the run continues and is saved in Results. The bar under the header shows what's still running and tells you when it's done.",
+    a: "ANN runs take a few minutes; gas dispersion takes about 8–10 minutes per gas. You can leave the page. The run continues and is saved in Results. The bar under the header shows what's still running and tells you when it's done.",
   },
   {
     q: "What file formats can I upload?",
@@ -23,7 +23,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "What do the dispersion files need?",
-    a: "Weather: Year, Month, Day, Hour, Cloud Cover (Oktas), Wind Speed (km/h), Wind Direction (°). Sources: Source ID, X Coord (m), Y Coord (m), XLength (m), YLength (m), Emission Rate (g/s), Release Height, Base Elevation — at least three sources, one gas per run.",
+    a: "Weather: Year, Month, Day, Hour, Cloud Cover (Oktas), Wind Speed (km/h), Wind Direction (°). Sources: Source ID, X Coord (m), Y Coord (m), XLength (m), YLength (m), Emission Rate (g/s), Release Height, Base Elevation. At least three sources, one gas per run.",
   },
   {
     q: "Why was my run marked Failed?",
@@ -31,11 +31,11 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "What do RMSE, MAE and R² mean?",
-    a: "RMSE and MAE are the typical size of the forecast error in the gas's own unit — smaller is better. R² is how much of the real variation the model captured: 1 is perfect, 0 is no better than the average.",
+    a: "RMSE and MAE are the typical size of the forecast error in the gas's own unit. Smaller is better. R² is how much of the real variation the model captured: 1 is perfect, 0 is no better than the average.",
   },
   {
     q: "What is the default location for?",
-    a: "It's the starting point for new ANN satellite runs so you don't retype coordinates. Change it any time in Settings.",
+    a: "It's the starting point for the map on the gas dispersion page so you don't retype coordinates. Change it any time in Settings.",
   },
   {
     q: "Can I save a result as PDF or an image?",

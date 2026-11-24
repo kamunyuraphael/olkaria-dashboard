@@ -2,7 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
 @import 'tailwindcss';
 
-/* Leaflet map container — loaded via CDN script, needs explicit sizing */
+/* Leaflet map container - loaded via CDN script, needs explicit sizing */
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
@@ -20,7 +20,7 @@ body,
 }
 
 /*
- * Semantic color tokens — consumed throughout src/ via arbitrary-value
+ * Semantic color tokens - consumed throughout src/ via arbitrary-value
  * Tailwind classes, e.g. bg-[var(--color-surface)], text-[var(--color-danger)].
  * Every component re-themes automatically when .dark is toggled on <html>;
  * no per-component dark: variants needed. See controllers/useTheme.tsx.

@@ -49,7 +49,7 @@ export function RequestAccessView() {
           </div>
           <p className="text-sm text-[var(--color-text-tertiary)] leading-relaxed">
             We'll email {form.email || "you"} once an administrator has reviewed the request. Approval is
-            manual because each analysis run retrieves satellite data on demand.
+            manual because each analysis run fits models on demand.
           </p>
         </div>
       </AuthLayout>

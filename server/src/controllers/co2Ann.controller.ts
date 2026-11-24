@@ -5,7 +5,7 @@ import { co2AnnQueue } from "@/queue/analysisQueue.js";
 import type { AuthedRequest } from "@/middleware/auth.middleware.js";
 
 // POST /api/co2-ann/analyze
-// JSON body: { gas?, latitude, longitude, radiusKm, startDate?, endDate? } —
+// JSON body: { gas?, latitude, longitude, radiusKm, startDate?, endDate? } -
 // gas is "SO2" | "CH4" | "CO2" (default "CO2"). The analysis-service fetches
 // that gas + weather data from satellite for this site/window itself; no
 // files are uploaded here. Route/queue names keep the historical "co2-ann"

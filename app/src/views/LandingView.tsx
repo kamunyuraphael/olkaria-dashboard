@@ -41,7 +41,7 @@ function Section({
   );
 }
 
-/** Illustrated topographic map panel for the hero — an editorial touch
+/** Illustrated topographic map panel for the hero - an editorial touch
  * borrowed from the reference design, recolored to our teal theme tokens
  * rather than hardcoded hex so it re-themes with light/dark. */
 function TopoArt() {
@@ -142,8 +142,8 @@ export function LandingView() {
               above.
             </h1>
             <p className="mt-5 text-base text-[var(--color-text-tertiary)] leading-relaxed max-w-lg">
-              A focused workspace for requesting and reviewing satellite-derived SO&#8322;, CH&#8324; and CO&#8322;
-              forecasts, and gas dispersion mapping for any site you study &mdash; built to show what
+              A focused workspace for forecasting CO&#8322; from your own daily readings,
+              and for gas dispersion mapping for any site you study, built to show what
               was actually measured, not invented.
             </p>
             <div className="mt-8 flex items-center gap-3">
@@ -181,7 +181,7 @@ export function LandingView() {
       {/* Intro strip */}
       <section className="px-6 py-10 border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
-          <span className="font-mono text-sm text-[var(--color-text-quaternary)] shrink-0">01&mdash;</span>
+          <span className="font-mono text-sm text-[var(--color-text-quaternary)] shrink-0">01</span>
           <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed flex-1">
             Whether you monitor a geothermal field, a landfill or a farm, understanding a site's atmospheric
             footprint begins with honest, careful observation.
@@ -201,12 +201,12 @@ export function LandingView() {
             {
               n: "01",
               t: "Define the query",
-              d: "Drop a pin or enter coordinates, set a buffer radius, choose SO₂, CH₄ or CO₂, and pick a date range — or upload source files for a dispersion run.",
+              d: "Drop a pin or enter coordinates, set a buffer radius, choose SO₂, CH₄ or CO₂, and pick a date range, or upload source files for a dispersion run.",
             },
             {
               n: "02",
               t: "Pipeline runs",
-              d: "Satellite and reanalysis data are retrieved, retrieval coverage is checked, and the ANN or dispersion model is fitted.",
+              d: "Your file is checked, and the ANN or dispersion model is fitted to it.",
             },
             {
               n: "03",
@@ -229,8 +229,8 @@ export function LandingView() {
           <div className="border border-[var(--color-border)] rounded-xl p-5">
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Data sources</h3>
             <ul className="space-y-2 text-sm text-[var(--color-text-tertiary)]">
-              <li>Sentinel-5P / TROPOMI — SO₂ and CH₄ column retrievals</li>
-              <li>ERA5-Land — meteorological covariates</li>
+              <li>Sentinel-5P / TROPOMI: SO₂ and CH₄ column retrievals</li>
+              <li>ERA5-Land: meteorological covariates</li>
               <li>Retrieved via Google Earth Engine per query domain</li>
               <li>Uploaded emission-source and meteorology files for dispersion runs</li>
             </ul>
@@ -238,16 +238,15 @@ export function LandingView() {
           <div className="border border-[var(--color-border)] rounded-xl p-5">
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Models</h3>
             <ul className="space-y-2 text-sm text-[var(--color-text-tertiary)]">
-              <li>LSTM-GRU neural network — satellite ANN forecasting</li>
-              <li>Gaussian plume gas dispersion — spatial concentration fields</li>
-              <li>Metrics: RMSE, MAE, R², reported alongside a coverage and detection-floor check</li>
+              <li>LSTM-GRU neural network: ANN forecasting from your data</li>
+              <li>Gaussian plume gas dispersion: spatial concentration fields</li>
+              <li>Metrics: RMSE, MAE, MAPE, R² and bias, reported against a SARIMA baseline</li>
             </ul>
           </div>
         </div>
         <p className="mt-5 text-sm text-[var(--color-text-tertiary)] leading-relaxed max-w-3xl">
-          Every satellite run reports a data coverage figure — the proportion of valid retrievals in the query
-          domain — which determines whether the series is aggregated daily or weekly, and whether the result
-          should be trusted at all.
+          Every uploaded file is checked before it is used, and the results say plainly whether days were
+          filled in or averaged, so you can judge how far to trust the forecast.
         </p>
       </Section>
 
@@ -287,7 +286,7 @@ export function LandingView() {
               },
               {
                 t: "This is not real-time air quality",
-                d: "Outputs are research forecasts from satellite column data and modelled dispersion fields, not ground-level exposure and not a public health alerting system.",
+                d: "Outputs are research forecasts from the data you provide and modelled dispersion fields, not ground-level exposure and not a public health alerting system.",
               },
             ].map((l) => (
               <div key={l.t} className="flex gap-3">
@@ -310,7 +309,7 @@ export function LandingView() {
       <Section eyebrow="Access" title="Requesting an account">
         <div className="max-w-3xl">
           <p className="text-sm text-[var(--color-text-tertiary)] leading-relaxed">
-            Each analysis run retrieves satellite data and fits models on demand, so accounts are approved
+            Each analysis run fits models on demand, so accounts are approved
             individually. Tell us your institution and what you plan to use the tool for, and you'll be
             notified once access is granted.
           </p>

@@ -14,7 +14,7 @@ export const DISPERSION_WINDOWS: { key: DispersionWindow; label: string }[] = [
 // Minimal local stand-in for GeoJSON.FeatureCollection so this file has no
 // external type dependency yet. Swap for the real `geojson` package types
 // once contour polygons are actually being rendered (see MapPicker/Turf
-// notes) — the shape below is compatible with that package's type.
+// notes) - the shape below is compatible with that package's type.
 export interface ContourFeatureCollection {
   type: "FeatureCollection";
   features: Array<{
@@ -26,7 +26,7 @@ export interface ContourFeatureCollection {
 
 export interface DispersionFieldResult {
   window: DispersionWindow;
-  // Contour polygons, generated server-side (geojsoncontour) — see the
+  // Contour polygons, generated server-side (geojsoncontour) - see the
   // architecture note in the project memory.
   geojson: ContourFeatureCollection | null;
   unit: string; // e.g. "µg m⁻³"

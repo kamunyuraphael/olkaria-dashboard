@@ -57,7 +57,7 @@ export async function apiPostJson<T>(path: string, body: unknown, method: "POST"
   return handle<T>(res, `${method} ${path} failed (${res.status}).`);
 }
 
-// No Content-Type here — the browser sets the multipart boundary itself
+// No Content-Type here - the browser sets the multipart boundary itself
 // when the body is a FormData; setting it manually breaks the upload.
 export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(apiUrl(path), {

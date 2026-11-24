@@ -30,7 +30,7 @@ authRouter.patch("/me/location", requireAuth, updateMyLocation);
 authRouter.post("/change-password", requireAuth, changePassword);
 authRouter.delete("/me", requireAuth, deleteMyAccount);
 
-// Admin-only access-request review. No self-service signup — accounts are
+// Admin-only access-request review. No self-service signup - accounts are
 // only created by an admin approving a pending request (see
 // server/API_CONTRACT.md for why: each analysis run has a real compute
 // cost, so access is manually gated).

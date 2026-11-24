@@ -12,15 +12,15 @@ instead (src/satellite/simulate.py - simulated until a real GEE dataset is
 chosen per gas, see that module's docstring). Everything downstream of that
 fetch (correlations, SARIMA, ANN) is a direct, untouched port.
 
-Note on the notebook's own alignment, reproduced here as-is per the
-"match analysis team's output" decision: cell 21 pairs the ANN's
-bias-corrected test predictions with the SARIMA baseline's test window by
-truncating the ANN array to the SARIMA test length and plotting it
-against the SARIMA test's dates - the two test sets come from different
-splits (the ANN's is 10% of an augmented/shuffled-free combined dataset;
-SARIMA's is literally the last 200 raw daily points) and aren't
-guaranteed to be the same date range. This module reproduces that pairing
-exactly rather than correcting it.
+Alignment (changed from the notebook, with the user's approval): the
+notebook's cell 21 paired the ANN's test predictions (from the augmented
+copy of the series) with the SARIMA window's dates by truncation, so the two
+lines were about 128 days apart on a 1,600-day series. Here the ANN predicts
+the same SARIMA_TEST_SIZE final days, date for date, using each day's real
+preceding 5-day input window. The ANN is still trained on the full series
+(as in the notebook) and its level is still shifted by the notebook's bias
+correction (mean observed - mean predicted over that window), so its fit on
+those days is in-sample and optimistic - results say so (meta.annEvaluation).
 """
 
 from __future__ import annotations
@@ -85,10 +85,11 @@ def _augment(X: np.ndarray, y: np.ndarray, noise_factor: float) -> tuple[np.ndar
     return X_aug, y_aug
 
 
-def run_ann(df: pd.DataFrame, target_col: str) -> tuple[np.ndarray, np.ndarray, dict]:
-    """Cells 7, 9-10: full LSTM-GRU train + bias-corrected test predict.
-    Returns (y_test_actual, y_test_pred_corrected, future), the first two
-    inverse-scaled to the target gas's real units; `future` is the notebook's
+def run_ann(df: pd.DataFrame, target_col: str, eval_days: int = SARIMA_TEST_SIZE) -> tuple[np.ndarray, np.ndarray, dict]:
+    """Cells 7, 9-10: full LSTM-GRU train + bias-corrected predict.
+    Returns (actual, predicted_corrected, future) for the final `eval_days`
+    days of the series, date-aligned and inverse-scaled to the gas's real
+    units; `future` is the notebook's
     cell 8/11 recursive FUTURE_DAYS-day-ahead forecast (see _future_forecast). Imports Keras lazily - it's the
     heaviest dependency and only this function needs it."""
     from sklearn.model_selection import train_test_split
@@ -161,12 +162,18 @@ def run_ann(df: pd.DataFrame, target_col: str) -> tuple[np.ndarray, np.ndarray, 
         validation_data=(X_val, y_val), callbacks=[early_stop, reduce_lr], verbose=0,
     )
 
-    y_test_pred = model.predict(X_test, verbose=0)
-    y_test_pred_inv = scaler_target.inverse_transform(y_test_pred)
-    y_test_inv = scaler_target.inverse_transform(y_test.reshape(-1, 1))
+    # Predict the final `eval_days` days one by one from their own preceding
+    # ANN_TIME_STEP-day windows (target day p <- feature rows p-5 .. p-1, as in
+    # _build_dataset), so each prediction lines up with its real date.
+    n_rows = len(scaled_features)
+    first = n_rows - eval_days
+    X_eval = np.stack([scaled_features[p - ANN_TIME_STEP : p] for p in range(first, n_rows)])
+    pred_inv = scaler_target.inverse_transform(model.predict(X_eval, verbose=0))
+    actual = target.to_numpy()[first:].reshape(-1, 1)
 
-    bias = y_test_inv.mean() - y_test_pred_inv.mean()
-    y_test_pred_corrected = y_test_pred_inv + bias
+    bias = actual.mean() - pred_inv.mean()  # notebook cell 9's bias correction
+    y_test_inv = actual
+    y_test_pred_corrected = pred_inv + bias
 
     future = _future_forecast(model, work, features, target, scaler_features, scaler_target, scaled_features)
     return y_test_inv.flatten(), y_test_pred_corrected.flatten(), future
@@ -244,27 +251,21 @@ def _forecast(merged: pd.DataFrame, target_col: str) -> dict:
     correlations = compute_correlations(merged, target_col)
 
     test_actual, forecast_values = run_sarima(merged, target_col)
-    _, ann_pred, future = run_ann(merged, target_col)
+    _, ann_pred, future = run_ann(merged, target_col, len(test_actual))
 
-    # Cell 21: truncate the ANN's own test predictions to the SARIMA test
-    # window's length and pair them with its dates - reproducing the
-    # notebook's pairing exactly, see module docstring.
     n = len(test_actual)
-    ann_pred_aligned = ann_pred[:n] if len(ann_pred) >= n else np.pad(ann_pred, (0, n - len(ann_pred)), constant_values=np.nan)
+    ann_pred_aligned = ann_pred  # already the same dates as test_actual
 
     return {
         "timeSeries": {
             "dates": [d.strftime("%Y-%m-%d") for d in test_actual.index],
             "actual": [round(float(v), 3) for v in test_actual.to_numpy()],
-            # ann_pred_aligned may be NaN-padded (see above) when the ANN's own
-            # test split came up shorter than the SARIMA window - plain JSON
-            # has no NaN, so those points serialize as null (a gap), which is
-            # also how the notebook's own matplotlib line silently renders them.
             "ann": [None if np.isnan(v) else round(float(v), 3) for v in ann_pred_aligned],
             "sarima": [round(float(v), 3) for v in forecast_values.to_numpy()],
         },
         "correlations": correlations,
         "future": future,
+        "evaluation": {"window": int(n), "annInSample": True, "annBiasCorrected": True},
     }
 
 
@@ -295,7 +296,7 @@ def run_satellite_ann(
     _require_enough_rows(len(merged), "The requested date range")
 
     out = _forecast(merged, target_col)
-    out["meta"] = {"source": "satellite", "gas": gas, "rows": int(len(merged))}
+    out["meta"] = {"source": "satellite", "gas": gas, "rows": int(len(merged)), "annEvaluation": out.pop("evaluation")}
     return out
 
 
@@ -314,6 +315,30 @@ _COLUMN_ALIASES = {
 
 def _norm(name: object) -> str:
     return "".join(ch for ch in str(name).lower() if ch.isalnum())
+
+
+def _parse_dates(col: pd.Series) -> tuple[pd.Series, str]:
+    """Parse a date column without pandas guessing month-first.
+
+    ISO dates (2024-01-31) and named months (1-Jan-15, 31 Jan 2024) are
+    unambiguous. For all-numeric dates like 03/04/2024 the order is worked
+    out from the data - a first part above 12 proves day-first, a second part
+    above 12 proves month-first - and when the file never settles it, day-first
+    is assumed (the notebook's own `dayfirst=True`). Returns (dates, how) where
+    `how` is "unambiguous", "day-first" or "month-first-detected" or
+    "day-first-assumed" so the UI can say so."""
+    text = col.astype(str).str.strip()
+    parts = text.str.extract(r"^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})")
+    numeric = parts.notna().all(axis=1)
+    if numeric.sum() >= max(1, int(len(text) * 0.5)):
+        first = pd.to_numeric(parts[0][numeric], errors="coerce")
+        second = pd.to_numeric(parts[1][numeric], errors="coerce")
+        if (first > 12).any():
+            return pd.to_datetime(text, dayfirst=True, errors="coerce", format="mixed"), "day-first"
+        if (second > 12).any():
+            return pd.to_datetime(text, dayfirst=False, errors="coerce", format="mixed"), "month-first-detected"
+        return pd.to_datetime(text, dayfirst=True, errors="coerce", format="mixed"), "day-first-assumed"
+    return pd.to_datetime(text, errors="coerce", format="mixed"), "unambiguous"
 
 
 def normalize_uploaded_frame(raw: pd.DataFrame, gas: str) -> tuple[pd.DataFrame, dict]:
@@ -355,7 +380,7 @@ def normalize_uploaded_frame(raw: pd.DataFrame, gas: str) -> tuple[pd.DataFrame,
     df = df[required].copy()
 
     # 2. parse + clean
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["date"], date_order = _parse_dates(df["date"])
     bad_dates = int(df["date"].isna().sum())
     df = df.dropna(subset=["date"])
     for c in required[1:]:
@@ -378,6 +403,7 @@ def normalize_uploaded_frame(raw: pd.DataFrame, gas: str) -> tuple[pd.DataFrame,
         "gas": gas,
         "rowsInFile": int(n_raw),
         "unparseableDates": bad_dates,
+        "dateOrder": date_order,
         "detectedStep": None,
         "resampledToDaily": False,
         "filledDays": 0,
@@ -428,5 +454,6 @@ def run_uploaded_ann(gas: str, raw: pd.DataFrame) -> dict:
     merged, meta = normalize_uploaded_frame(raw, gas)
     _require_enough_rows(len(merged), "Your file")
     out = _forecast(merged, SATELLITE_ANN_TARGET_COLUMN[gas])
+    meta["annEvaluation"] = out.pop("evaluation")
     out["meta"] = meta
     return out

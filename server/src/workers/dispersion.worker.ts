@@ -55,7 +55,7 @@ export function startDispersionWorker() {
       if (!done) await DispersionResult.deleteOne({ _id: resultDoc._id });
     },
     // AERMOD runs are the longest job in the system (~8-10 min real
-    // runtime) — lower concurrency than co2-ann since each run is heavier.
+    // runtime) - lower concurrency than co2-ann since each run is heavier.
     { connection: redisConnection, concurrency: 1 }
   )
     .on("failed", async (job, err) => {

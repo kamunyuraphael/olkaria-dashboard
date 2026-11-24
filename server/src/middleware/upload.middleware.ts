@@ -24,14 +24,14 @@ const storage = multer.diskStorage({
 });
 
 /**
- * Supported data-file formats — mirrors app/src/lib/fileFormats.ts. CSV,
+ * Supported data-file formats - mirrors app/src/lib/fileFormats.ts. CSV,
  * TSV, and both Excel formats cover everything pandas' read_csv/read_excel
  * handle natively, and everything the CO2 ANN / AERMOD notebooks actually
  * take as input.
  *
  * This is a FIRST-PASS filter only, by extension (checked case-
  * insensitively). It is not, and cannot be, the real validation:
- *   - A file extension is just a name — nothing stops a client renaming
+ *   - A file extension is just a name - nothing stops a client renaming
  *     any file to ".csv". This filter exists to reject obviously-wrong
  *     uploads early with a clear error, not to guarantee the file is
  *     actually parseable.
@@ -41,7 +41,7 @@ const storage = multer.diskStorage({
  *     normal job-failure path: the worker's AnalysisJob.stage becomes
  *     "failed" with a readable failureReason, which GET /jobs/:jobId
  *     returns as { stage: "failed", error }. The frontend already renders
- *     that in its "Analysis failed" state — see useUploadAnalysis.ts.
+ *     that in its "Analysis failed" state - see useUploadAnalysis.ts.
  *   - We deliberately did NOT add a magic-byte/content-sniffing check
  *     (e.g. file-type) at the upload layer. It would add a dependency and
  *     complexity to catch the same failure the analysis-service already

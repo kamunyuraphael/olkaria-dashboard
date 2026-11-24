@@ -6,7 +6,7 @@ interface DiurnalChartProps {
   className?: string;
 }
 
-// Fixed drawing surface — scaled to the container by the SVG's viewBox, so
+// Fixed drawing surface - scaled to the container by the SVG's viewBox, so
 // the chart stays crisp at any card size without recomputing geometry.
 const WIDTH = 320;
 const HEIGHT = 170;
@@ -39,10 +39,10 @@ function pathFor(points: DiurnalReceptorPoint[], key: "concentrationNorm" | "win
  * 24-hour diurnal series for one receptor: normalized concentration vs.
  * normalized wind speed. Both series already share a 0-1 scale (see
  * dispersion.types.ts), so this is a single-axis line chart, not a
- * dual-axis one — per the dataviz method, two y-scales on one chart is
+ * dual-axis one - per the dataviz method, two y-scales on one chart is
  * the #1 chart mistake, and here the data was designed to avoid it.
  * Colors: --color-primary (concentration) + --color-chart-secondary (wind
- * speed) — the project's own reserved two-series pair, CVD-checked ~23-33
+ * speed) - the project's own reserved two-series pair, CVD-checked ~23-33
  * ΔE apart, well clear of the colorblind-safety floor.
  */
 export function DiurnalChart({ points, className = "" }: DiurnalChartProps) {
@@ -74,7 +74,7 @@ export function DiurnalChart({ points, className = "" }: DiurnalChartProps) {
 
   return (
     <div className={`${className} relative`}>
-      {/* Legend — line-keys, not boxes, per the two series */}
+      {/* Legend - line-keys, not boxes, per the two series */}
       <div className="absolute top-0 left-0 flex items-center gap-4 text-[11px] text-[var(--color-text-tertiary)] px-1">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-0.5 rounded bg-[var(--color-primary)]" />
@@ -93,7 +93,7 @@ export function DiurnalChart({ points, className = "" }: DiurnalChartProps) {
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHoverHour(null)}
       >
-        {/* Gridlines — hairline, recessive */}
+        {/* Gridlines - hairline, recessive */}
         {Y_TICKS.map((v) => (
           <line
             key={v}
@@ -135,7 +135,7 @@ export function DiurnalChart({ points, className = "" }: DiurnalChartProps) {
           </text>
         ))}
 
-        {/* Series lines — 2px, round joins */}
+        {/* Series lines - 2px, round joins */}
         <path d={pathFor(sorted, "windSpeedNorm")} fill="none" stroke="var(--color-chart-secondary)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
         <path d={pathFor(sorted, "concentrationNorm")} fill="none" stroke="var(--color-primary)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
 
@@ -157,7 +157,7 @@ export function DiurnalChart({ points, className = "" }: DiurnalChartProps) {
         )}
       </svg>
 
-      {/* Tooltip — values lead, series name follows */}
+      {/* Tooltip - values lead, series name follows */}
       {hovered && (
         <div
           className="absolute pointer-events-none px-2.5 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-surface)] text-[11px] shadow-lg"

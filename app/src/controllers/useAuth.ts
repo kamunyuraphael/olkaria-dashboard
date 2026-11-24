@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
       setUser(loggedInUser);
     } catch {
-      setError("Could not reach the server. It may be waking up after a quiet period — wait about 30 seconds and try again.");
+      setError("Could not reach the server. It may be waking up after a quiet period. Wait about 30 seconds and try again.");
     } finally {
       setIsLoading(false);
     }

@@ -1,7 +1,7 @@
 import { Redis } from "ioredis";
 import { env } from "@/config/env.js";
 
-// maxRetriesPerRequest must be null — BullMQ requires this on the connection
+// maxRetriesPerRequest must be null - BullMQ requires this on the connection
 // it's handed, otherwise it throws at queue/worker construction time.
 export const redisConnection = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,

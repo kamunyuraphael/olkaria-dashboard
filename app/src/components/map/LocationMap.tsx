@@ -16,7 +16,7 @@ export function LocationMap({ lat, lng, zoom = 11, className = "h-52" }: { lat: 
       const map = L.map(containerRef.current, { zoomControl: true, scrollWheelZoom: false }).setView([lat, lng], zoom);
       L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        { attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics", maxZoom: 18 }
+        { attribution: "Tiles © Esri. Source: Esri, Maxar, Earthstar Geographics", maxZoom: 18 }
       ).addTo(map);
       markerRef.current = L.circleMarker([lat, lng], {
         radius: 7, color: "#fff", fillColor: "#0E7C86", fillOpacity: 1, weight: 2,

@@ -5,7 +5,7 @@ import { submitCo2AnnAnalysis, submitCo2AnnUpload, getCo2AnnJob } from "@/contro
 
 export const co2AnnRouter = Router();
 
-// JSON body: { latitude, longitude, radiusKm, startDate?, endDate? } — no
+// JSON body: { latitude, longitude, radiusKm, startDate?, endDate? } - no
 // uploads. CO2 ANN now fetches its own data from satellite given just
 // coordinates + a buffer radius, same input shape as Module A's SO2/CH4
 // flow (see server/API_CONTRACT.md).

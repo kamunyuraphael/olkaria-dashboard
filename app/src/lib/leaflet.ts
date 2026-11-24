@@ -1,4 +1,4 @@
-// Shared Leaflet bootstrap — loaded from CDN rather than an npm dependency
+// Shared Leaflet bootstrap - loaded from CDN rather than an npm dependency
 // (see components/map/MapPicker.tsx's original rationale: avoids bundling
 // Leaflet's CSS/image assets through Vite for what's a handful of map
 // widgets). Both MapPicker (coordinate picker) and ContourMap (dispersion

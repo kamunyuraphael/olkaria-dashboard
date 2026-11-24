@@ -8,6 +8,7 @@ import { FileCheckNotice, hasBlockingError } from "@/components/upload/FileCheck
 import { useFileCheck } from "@/controllers/useFileCheck";
 import { checkAnnFile } from "@/lib/checkDataFile";
 import { csvFile, sampleAnnCsv } from "@/lib/sampleData";
+import { SATELLITE_ENABLED, isGasEnabled } from "@/lib/features";
 import type { Gas } from "@/models/analysis.types";
 
 export type DataSource = "satellite" | "upload";
@@ -42,11 +43,13 @@ const SOURCES: { id: DataSource; label: string }[] = [
   { id: "upload", label: "My own data" },
 ];
 
-const GASES: { id: Gas; label: string }[] = [
-  { id: "CO2", label: "CO₂" },
-  { id: "CH4", label: "CH₄" },
-  { id: "SO2", label: "SO₂" },
-];
+const GASES: { id: Gas; label: string; disabled?: boolean }[] = (
+  [
+    { id: "CO2", label: "CO₂" },
+    { id: "CH4", label: "CH₄" },
+    { id: "SO2", label: "SO₂" },
+  ] as { id: Gas; label: string }[]
+).map((g) => (isGasEnabled(g.id) ? g : { ...g, label: `${g.label} · soon`, disabled: true }));
 
 function Segmented<T extends string>({
   value,
@@ -55,7 +58,7 @@ function Segmented<T extends string>({
   name,
 }: {
   value: T;
-  options: { id: T; label: string }[];
+  options: { id: T; label: string; disabled?: boolean }[];
   onChange: (v: T) => void;
   name: string;
 }) {
@@ -66,7 +69,9 @@ function Segmented<T extends string>({
           key={o.id}
           type="button"
           onClick={() => onChange(o.id)}
-          className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
+          disabled={o.disabled}
+          title={o.disabled ? "Coming soon" : undefined}
+          className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 ${
             value === o.id
               ? "bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm"
               : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
@@ -86,19 +91,19 @@ const num = (raw: string, set: (v: number) => void, positive = false) => {
 
 /** Full-width input section at the top of the ANN page. */
 export function AnnInputs(p: AnnInputsProps) {
-  const isUpload = p.source === "upload";
+  const isUpload = !SATELLITE_ENABLED || p.source === "upload";
   const check = useFileCheck(isUpload ? p.file : null, (f) => checkAnnFile(f, p.gas), [p.gas]);
   const canRun = !p.isRunning && (!isUpload || (p.file !== null && !hasBlockingError(check)));
 
   return (
     <Card className="p-4 sm:p-5">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+        {SATELLITE_ENABLED && <div>
           <p className={labelClass}>Data source<HelpTip text="Satellite data is fetched automatically for the coordinates you choose. “My own data” lets you upload your own daily measurements instead." /></p>
           <Segmented name="Data source" value={p.source} options={SOURCES} onChange={p.onSourceChange} />
-        </div>
+        </div>}
         <div>
-          <p className={labelClass}>Gas<HelpTip text="CO₂ and CH₄ are greenhouse gases; SO₂ is an air pollutant. Each is forecast separately." /></p>
+          <p className={labelClass}>Gas<HelpTip text="CO₂ is available now. CH₄ and SO₂ will follow." /></p>
           <Segmented name="Gas" value={p.gas} options={GASES} onChange={p.onGasChange} />
         </div>
       </div>

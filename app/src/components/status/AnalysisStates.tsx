@@ -1,4 +1,6 @@
-const RUN_STAGES = ["Queued", "Fetching satellite data", "Running model"];
+import { SATELLITE_ENABLED } from "@/lib/features";
+
+const RUN_STAGES = SATELLITE_ENABLED ? ["Queued", "Fetching satellite data", "Running model"] : ["Queued", "Running model"];
 
 export function ErrorIcon() {
   return (
@@ -42,7 +44,7 @@ export function AnalysisRunningState({ label, onStop }: { label: string; onStop?
         <RunStageTracker label={label} />
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{label}</h3>
         <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">
-          You can leave this page — the run continues in the background and will appear in Results when it finishes.
+          You can leave this page. The run continues in the background and will appear in Results when it finishes.
         </p>
         {onStop && (
           <button
@@ -75,7 +77,7 @@ export function AnalysisFailedState({
         <p className="mt-1.5 text-sm text-[var(--color-text-tertiary)] leading-relaxed">
           {source === "upload"
             ? message || "The file could not be used. Check it against the template and try again."
-            : "The run could not be completed. This often means too few valid retrievals were available for the selected domain and date range — try a wider buffer radius or a longer period."}
+            : "The run could not be completed. This often means too few valid retrievals were available for the selected domain and date range. Try a wider buffer radius or a longer period."}
         </p>
         <button
           onClick={onRetry}

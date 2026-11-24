@@ -275,7 +275,7 @@ export function ResultsLibraryView({
           Failed and stopped runs are removed permanently. Completed results are not touched.
         </ConfirmDialog>
       )}
-      {error && <p className="text-sm text-[var(--color-danger)]">Couldn't reach the server — showing what was loaded earlier.</p>}
+      {error && <p className="text-sm text-[var(--color-danger)]">Couldn't reach the server. Showing what was loaded earlier.</p>}
       {loading && jobs.length === 0 && <ListSkeleton />}
 
       {!loading && rows.length === 0 && (

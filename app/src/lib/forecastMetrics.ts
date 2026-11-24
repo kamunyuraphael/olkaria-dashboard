@@ -37,6 +37,14 @@ export function annMetrics(ts: Co2AnnResult["timeSeries"], model: "ann" | "sarim
   };
 }
 
+/** Yardstick: guess each day equals the previous day's reading. It needs the
+ * day before, so it is scored on every day but the first. Computed here from
+ * the observed series, so it works for stored runs too. */
+export function naiveMetrics(ts: Co2AnnResult["timeSeries"]): ForecastMetrics | null {
+  const prev = { ...ts, ann: ts.actual.map((_, i) => (i === 0 ? null : ts.actual[i - 1])) };
+  return annMetrics(prev as Co2AnnResult["timeSeries"], "ann");
+}
+
 /** Sensible decimals for the gas's magnitude (CH4 ~1900 ppb vs SO2 ~9). */
 export function fmt(v: number): string {
   const abs = Math.abs(v);

@@ -33,7 +33,7 @@ interface Options {
  * Drives an upload -> submit -> poll -> result flow.
  *
  * Both the CO2 ANN (~3 min) and dispersion (~8-10 min) analysis runs are far
- * too long for a plain synchronous request/response — a browser or proxy
+ * too long for a plain synchronous request/response - a browser or proxy
  * will typically time out a held-open request well before either finishes,
  * and a refresh mid-run would lose the result outright. So this is a real
  * job: submit() kicks it off server-side and returns a jobId, then poll()

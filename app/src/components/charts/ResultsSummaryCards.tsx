@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { PlaceholderBox } from "@/components/ui/PlaceholderBox";
 import { MetricRow } from "@/components/charts/MetricRow";
-import { annMetrics, fmt } from "@/lib/forecastMetrics";
+import { annMetrics, naiveMetrics, fmt } from "@/lib/forecastMetrics";
 import type { Audience, Gas } from "@/models/analysis.types";
 import type { Co2AnnResult } from "@/models/co2ann.types";
 
@@ -58,6 +58,7 @@ export function ModelMetricsCard({
   unit?: string;
 }) {
   const m = data ? annMetrics(data) : null;
+  const naive = data ? naiveMetrics(data) : null;
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between mb-4">
@@ -71,18 +72,24 @@ export function ModelMetricsCard({
           <MetricRow label="R²" value={m.r2.toFixed(2)} />
           {m.mape !== null && <MetricRow label="MAPE" value={`${m.mape.toFixed(1)}%`} />}
           <MetricRow label={unit ? `Bias (${unit})` : "Bias"} value={`${m.bias > 0 ? "+" : ""}${fmt(m.bias)}`} />
+          {naive && <MetricRow label={unit ? `Reference: same as yesterday, RMSE (${unit})` : "Reference: same as yesterday, RMSE"} value={fmt(naive.rmse)} />}
+          {m.r2 < 0 && (
+            <p className="mt-2 text-xs text-[var(--color-warning)] leading-relaxed">
+              R² below 0 means the model did worse than simply predicting the average on these days.
+            </p>
+          )}
           <details className="mt-3 text-xs text-[var(--color-text-tertiary)] leading-relaxed no-print">
             <summary className="cursor-pointer text-[var(--color-text-secondary)] font-medium">What do these numbers mean?</summary>
-            <p className="mt-1.5"><strong>RMSE</strong> and <strong>MAE</strong> are the typical size of the forecast's error, in the same unit as the gas — smaller is better. <strong>R²</strong> is how much of the real ups and downs the model captured: 1.0 is perfect, 0 means no better than guessing the average. <strong>MAPE</strong> is the average error as a percentage of the real value. <strong>Bias</strong> shows whether the model tends to over-predict (+) or under-predict (−).</p>
+            <p className="mt-1.5"><strong>RMSE</strong> and <strong>MAE</strong> are the typical size of the forecast's error, in the same unit as the gas. Smaller is better. <strong>R²</strong> is how much of the real ups and downs the model captured: 1.0 is perfect, 0 means no better than guessing the average, and below 0 means worse than that. <strong>MAPE</strong> is the average error as a percentage of the real value. <strong>Reference</strong> is a simple yardstick: guessing that each day equals the day before. <strong>Bias</strong> shows whether the model tends to over-predict (+) or under-predict (−).</p>
           </details>
           {audience === "policy" && (
             <div className="mt-4 p-3 bg-[var(--color-primary-subtle)] rounded-lg border border-[var(--color-primary)]/20">
               <p className="text-xs text-[var(--color-primary)] leading-snug">
                 {m.r2 >= 0.7
-                  ? `An R² of ${m.r2.toFixed(2)} means the model explains most of the variation in observed concentration — reliable enough to support planning at this site.`
+                  ? `An R² of ${m.r2.toFixed(2)} means the model explains most of the variation in observed concentration, reliable enough to support planning at this site.`
                   : m.r2 >= 0.4
-                  ? `An R² of ${m.r2.toFixed(2)} means the model explains part of the variation in observed concentration — use it as a guide, not as a sole basis for decisions.`
-                  : `An R² of ${m.r2.toFixed(2)} means the model explains little of the variation in observed concentration — treat this forecast with caution.`}
+                  ? `An R² of ${m.r2.toFixed(2)} means the model explains part of the variation in observed concentration. Use it as a guide, not as a sole basis for decisions.`
+                  : `An R² of ${m.r2.toFixed(2)} means the model explains little of the variation in observed concentration. Treat this forecast with caution.`}
               </p>
             </div>
           )}
@@ -103,7 +110,7 @@ export function DetectionFloorBanner() {
         <circle cx="8" cy="11" r="0.75" fill="var(--color-danger)" />
       </svg>
       <p className="text-sm text-[var(--color-danger-text)] leading-snug">
-        <span className="font-semibold">Detection floor warning — </span>
+        <span className="font-semibold">Detection floor warning: </span>
         SO₂ signal at this site is likely below the satellite detection floor. Ground-based monitoring is
         recommended for reliable measurements at this location.
       </p>

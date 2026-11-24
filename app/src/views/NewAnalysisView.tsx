@@ -9,6 +9,7 @@ import { AnalysisRunningState, AnalysisFailedState, AnalysisUploadEmptyState, An
 import { AnnResults } from "@/components/results/AnnResults";
 import { useQueryParams, type AnnPrefill } from "@/controllers/useQueryParams";
 import { useAnalysisJob } from "@/controllers/useAnalysisJob";
+import { SATELLITE_ENABLED, isGasEnabled } from "@/lib/features";
 import { downloadTemplate, UPLOAD_REQUIREMENTS } from "@/lib/uploadTemplate";
 
 const GAS_NAME = { SO2: "SO₂", CH4: "CH₄", CO2: "CO₂" } as const;
@@ -21,11 +22,15 @@ export function NewAnalysisView({ prefill }: { prefill?: AnnPrefill | null }) {
   useEffect(() => {
     if (job.status !== "idle") void refresh();
   }, [job.status, refresh]);
-  const [source, setSource] = useState<DataSource>(prefill?.source ?? "satellite");
+  const [source, setSource] = useState<DataSource>(SATELLITE_ENABLED ? prefill?.source ?? "satellite" : "upload");
+  // Only enabled gases can run; anything remembered from before falls back to CO₂.
+  useEffect(() => {
+    if (!isGasEnabled(q.gas)) q.setGas("CO2");
+  }, [q.gas, q.setGas]);
   const [file, setFile] = useState<File | null>(null);
   const [label, setLabel] = useState(prefill?.label ?? "");
   // The run the results on screen belong to; the inputs can change afterwards.
-  const [shown, setShown] = useState<{ source: DataSource; gas: typeof q.gas }>({ source: "satellite", gas: q.gas });
+  const [shown, setShown] = useState<{ source: DataSource; gas: typeof q.gas }>({ source: SATELLITE_ENABLED ? "satellite" : "upload", gas: q.gas });
 
   const onRun = () => {
     setShown({ source, gas: q.gas });
@@ -44,7 +49,7 @@ export function NewAnalysisView({ prefill }: { prefill?: AnnPrefill | null }) {
       : `${q.lat.toFixed(2)}°, ${q.lng.toFixed(2)}°`;
 
   return (
-    <PageShell title="ANN" subtitle="Forecast a gas from satellite data or from your own readings" wide>
+    <PageShell title="ANN" subtitle={SATELLITE_ENABLED ? "Forecast a gas from satellite data or from your own readings" : "Forecast CO₂ from your own daily readings"} wide>
       <AnnInputs
         lat={q.lat}
         lng={q.lng}
@@ -70,7 +75,7 @@ export function NewAnalysisView({ prefill }: { prefill?: AnnPrefill | null }) {
         onUseHome={q.useHome}
       />
 
-      {source === "satellite" && (
+      {SATELLITE_ENABLED && source === "satellite" && (
         <div className="h-64 sm:h-80 flex flex-col">
           <QuerySitePreview lat={q.lat} lng={q.lng} radiusKm={q.radiusKm} gas={q.gas} onCoordsChange={q.setCoords} />
         </div>
@@ -90,7 +95,7 @@ export function NewAnalysisView({ prefill }: { prefill?: AnnPrefill | null }) {
         </Card>
       )}
 
-      {job.status === "idle" && source === "upload" && (
+      {job.status === "idle" && (!SATELLITE_ENABLED || source === "upload") && (
         <AnalysisUploadEmptyState requirements={UPLOAD_REQUIREMENTS} onDownloadTemplate={() => downloadTemplate(q.gas)} />
       )}
       {job.isRunning && <AnalysisRunningState label={runLabel} onStop={job.cancel} />}
